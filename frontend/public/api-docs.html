@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tariff Navigator API Documentation</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: #f5f7fa;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+        
+        .content {
+            padding: 40px;
+        }
+        
+        .section {
+            margin-bottom: 40px;
+        }
+        
+        .section h2 {
+            color: #667eea;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .endpoint {
+            background: #f8f9fa;
+            border-left: 4px solid #667eea;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 0 8px 8px 0;
+        }
+        
+        .endpoint h3 {
+            color: #333;
+            margin-bottom: 10px;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .method {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-size: 0.85em;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+        
+        .method.get { background: #61affe; color: white; }
+        .method.post { background: #49cc90; color: white; }
+        
+        .url {
+            background: #2d3748;
+            color: #68d391;
+            padding: 15px;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            margin: 10px 0;
+            overflow-x: auto;
+        }
+        
+        .params {
+            margin: 15px 0;
+        }
+        
+        .params table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .params th, .params td {
+            text-align: left;
+            padding: 10px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        
+        .params th {
+            background: #edf2f7;
+            font-weight: 600;
+        }
+        
+        .required {
+            color: #e53e3e;
+            font-weight: bold;
+        }
+        
+        .optional {
+            color: #718096;
+        }
+        
+        .example {
+            background: #1a202c;
+            color: #e2e8f0;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 15px;
+            overflow-x: auto;
+        }
+        
+        .example h4 {
+            color: #68d391;
+            margin-bottom: 10px;
+        }
+        
+        .example pre {
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            line-height: 1.5;
+        }
+        
+        .try-it {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1em;
+            margin-top: 10px;
+        }
+        
+        .try-it:hover {
+            background: #5a67d8;
+        }
+        
+        .response {
+            background: #f0fff4;
+            border: 1px solid #9ae6b4;
+            padding: 15px;
+            border-radius: 6px;
+            margin-top: 15px;
+            display: none;
+        }
+        
+        .response.show {
+            display: block;
+        }
+        
+        .status {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.8em;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        
+        .status.success { background: #c6f6d5; color: #22543d; }
+        .status.error { background: #fed7d7; color: #742a2a; }
+        
+        .footer {
+            background: #2d3748;
+            color: white;
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .copy-btn {
+            background: #4a5568;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.8em;
+            margin-left: 10px;
+        }
+        
+        .copy-btn:hover {
+            background: #2d3748;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚢 Tariff Navigator API</h1>
+            <p>AI-powered tariff calculation and FTA checking</p>
+            <p style="margin-top: 15px; font-size: 0.9em;">Base URL: <code>http://localhost:8000/api/v1</code></p>
+        </div>
+        
+        <div class="content">
+            <!-- Health Check -->
+            <div class="section">
+                <h2>🔍 Health Check</h2>
+                <div class="endpoint">
+                    <h3><span class="method get">GET</span> /health</h3>
+                    <p>Check if the API is running</p>
+                    <div class="url">http://localhost:8000/api/v1/health</div>
+                    <button class="try-it" onclick="tryEndpoint('health')">Try it</button>
+                    <div id="health-response" class="response"></div>
+                </div>
+            </div>
+            
+            <!-- Search HS Codes -->
+            <div class="section">
+                <h2>🔎 Search HS Codes</h2>
+                <div class="endpoint">
+                    <h3><span class="method get">GET</span> /tariff/search</h3>
+                    <p>Search for HS codes by prefix</p>
+                    <div class="url">http://localhost:8000/api/v1/tariff/search?code={code}&country={country}</div>
+                    
+                    <div class="params">
+                        <table>
+                            <tr>
+                                <th>Parameter</th>
+                                <th>Type</th>
+                                <th>Required</th>
+                                <th>Description</th>
+                            </tr>
+                            <tr>
+                                <td>code</td>
+                                <td>string</td>
+                                <td class="required">Yes</td>
+                                <td>HS code prefix (e.g., "8703")</td>
+                            </tr>
+                            <tr>
+                                <td>country</td>
+                                <td>string</td>
+                                <td class="required">Yes</td>
+                                <td>Country code: CN, EU</td>
+                            </tr>
+                        </table>
+                    </div>
+                    
+                    <div class="example">
+                        <h4>Example Request:</h4>
+                        <pre>GET /api/v1/tariff/search?code=8703&country=CN</pre>
+                        <button class="copy-btn" onclick="copyToClipboard('GET /api/v1/tariff/search?code=8703&country=CN')">Copy</button>
+                    </div>
+                    
+                    <button class="try-it" onclick="tryEndpoint('search')">Try it</button>
+                    <div id="search-response" class="response"></div>
+                </div>
+            </div>
+            
+            <!-- Autocomplete -->
+            <div class="section">
+                <h2>💡 Autocomplete</h2>
+                <div class="endpoint">
+                    <h3><span class="method get">GET</span> /tariff/autocomplete</h3>
+                    <p>Search HS codes by description or code</p>
+                    <div class="url">http://localhost:8000/api/v1/tariff/autocomplete?query={query}&country={country}</div>
+                    
+                    <div class="params">
+                        <table>
+                            <tr>
+                                <th>Parameter</th>
+                                <th>Type</th>
+                                <th>Required</th>
+                                <th>Description</th>
+                            </tr>
+                            <tr>
+                                <td>query</td>
+                                <td>string</td>
+                                <td class="required">Yes</td>
+                                <td>Search term (min 2 chars)</td>
+                            </tr>
+                            <tr>
+                                <td>country</td>
+                                <td>string</td>
+                                <td class="required">Yes</td>
+                                <td>Country code: CN, EU</td>
+                            </tr>
+                        </table>
+                    </div>
+                    
+                    <div class="example">
+                        <h4>Example Request:</h4>
+                        <pre>GET /api/v1/tariff/autocomplete?query=car&country=CN</pre>
+                        <button class="copy-btn" onclick="copyToClipboard('GET /api/v1/tariff/autocomplete?query=car&country=CN')">Copy</button>
+                    </div>
+                    
+                    <button class="try-it" onclick="tryEndpoint('autocomplete')">Try it</button>
+                    <div id="autocomplete-response" class="response"></div>
+                </div>
+            </div>
+            
+            <!-- Calculate Tariff -->
+            <div class="section">
+                <h2>🧮 Calculate Tariff</h2>
+                <div class="endpoint">
+                    <h3><span class="method post">POST</span> /tariff/calculate</h3>
+                    <p>Calculate import duties and taxes</p>
+                    <div class="url">http://localhost:8000/api/v1/tariff/calculate?hs_code={hs_code}&country={country}&value={value}</div>
+                    
+                    <div class="params">
+                        <table>
+                            <tr>
+                                <th>Parameter</th>
+                                <th>Type</th>
+                                <th>Required</th>
+                                <th>Description</th>
+                            </tr>
+                            <tr>
+                                <td>hs_code</td>
+                                <td>string</td>
+                                <td class="required">Yes</td>
+                                <td>Full HS code (e.g., "8703230010")</td>
+                            </tr>
+                            <tr>
+                                <td>country</td>
+                                <td>string</td>
+                                <td class="required">Yes</td>
+                                <td>Destination: CN, EU</td>
+                            </tr>
+                            <tr>
+                                <td>value</td>
+                                <td>number</td>
+                                <td class="required">Yes</td>
+                                <td>CIF value in USD</td>
+                            </tr>
+                        </table>
+                    </div>
+                    
+                    <div class="example">
+                        <h4>Example Request:</h4>
+                        <pre>POST /api/v1/tariff/calculate?hs_code=8703230010&country=CN&value=50000</pre>
+                        <button class="copy-btn" onclick="copyToClipboard('POST /api/v1/tariff/calculate?hs_code=8703230010&country=CN&value=50000')">Copy</button>
+                    </div>
+                    
+                    <button class="try-it" onclick="tryEndpoint('calculate')">Try it</button>
+                    <div id="calculate-response" class="response"></div>
+                </div>
+            </div>
+            
+            <!-- Calculate with Currency -->
+            <div class="section">
+                <h2>💱 Calculate with Currency Conversion</h2>
+                <div class="endpoint">
+                    <h3><span class="method post">POST</span> /tariff/calculate-with-currency</h3>
+                    <p>Calculate tariff and convert to local currency</p>
+                    <div class="url">http://localhost:8000/api/v1/tariff/calculate-with-currency?hs_code={hs_code}&country={country}&value={value}&from_currency={from}&to_currency={to}</div>
+                    
+                    <div class="params">
+                        <table>
+                            <tr>
+                                <th>Parameter</th>
+                                <th>Type</th>
+                                <th>Required</th>
+                                <th>Description</th>
+                            </tr>
+                            <tr>
+                                <td>hs_code</td>
+                                <td>string</td>
+                                <td class="required">Yes</td>
+                                <td>Full HS code</td>
+                            </tr>
+                            <tr>
+                                <td>country</td>
+                                <td>string</td>
+                                <td class="required">Yes</td>
+                                <td>Destination: CN, EU</td>
+                            </tr>
+                            <tr>
+                                <td>value</td>
+                                <td>number</td>
+                                <td class="required">Yes</td>
+                                <td>CIF value</td>
+                            </tr>
+                            <tr>
+                                <td>from_currency</td>
+                                <td>string</td>
+                                <td class="optional">No</td>
+                                <td>Default: USD</td>
+                            </tr>
+                            <tr>
+                                <td>to_currency</td>
+                                <td>string</td>
+                                <td class="optional">No</td>
+                                <td>Default: USD (CNY, EUR, JPY, etc.)</td>
+                            </tr>
+                        </table>
+                    </div>
+                    
+                    <div class="example">
+                        <h4>Example Request:</h4>
+                        <pre>POST /api/v1/tariff/calculate-with-currency?hs_code=8703230010&country=CN&value=50000&from_currency=USD&to_currency=CNY</pre>
+                        <button class="copy-btn" onclick="copyToClipboard('POST /api/v1/tariff/calculate-with-currency?hs_code=8703230010&country=CN&value=50000&from_currency=USD&to_currency=CNY')">Copy</button>
+                    </div>
+                    
+                    <button class="try-it" onclick="tryEndpoint('calculate-currency')">Try it</button>
+                    <div id="calculate-currency-response" class="response"></div>
+                </div>
+            </div>
+            
+            <!-- FTA Check -->
+            <div class="section">
+                <h2>✅ FTA Eligibility Check</h2>
+                <div class="endpoint">
+                    <h3><span class="method get">GET</span> /tariff/fta-check</h3>
+                    <p>Check Free Trade Agreement eligibility and savings</p>
+                    <div class="url">http://localhost:8000/api/v1/tariff/fta-check?hs_code={hs_code}&origin_country={origin}&dest_country={dest}</div>
+                    
+                    <div class="params">
+                        <table>
+                            <tr>
+                                <th>Parameter</th>
+                                <th>Type</th>
+                                <th>Required</th>
+                                <th>Description</th>
+                            </tr>
+                            <tr>
+                                <td>hs_code</td>
+                                <td>string</td>
+                                <td class="required">Yes</td>
+                                <td>Full HS code</td>
+                            </tr>
+                            <tr>
+                                <td>origin_country</td>
+                                <td>string</td>
+                                <td class="required">Yes</td>
+                                <td>Origin country code (JP, US, etc.)</td>
+                            </tr>
+                            <tr>
+                                <td>dest_country</td>
+                                <td>string</td>
+                                <td class="required">Yes</td>
+                                <td>Destination: CN, EU</td>
+                            </tr>
+                        </table>
+                    </div>
+                    
+                    <div class="example">
+                        <h4>Example Request:</h4>
+                        <pre>GET /api/v1/tariff/fta-check?hs_code=8703230010&origin_country=JP&dest_country=CN</pre>
+                        <button class="copy-btn" onclick="copyToClipboard('GET /api/v1/tariff/fta-check?hs_code=8703230010&origin_country=JP&dest_country=CN')">Copy</button>
+                    </div>
+                    
+                    <button class="try-it" onclick="tryEndpoint('fta')">Try it</button>
+                    <div id="fta-response" class="response"></div>
+                </div>
+            </div>
+            
+            <!-- Exchange Rate -->
+            <div class="section">
+                <h2>💹 Exchange Rate</h2>
+                <div class="endpoint">
+                    <h3><span class="method get">GET</span> /tariff/exchange-rate</h3>
+                    <p>Get real-time exchange rates</p>
+                    <div class="url">http://localhost:8000/api/v1/tariff/exchange-rate?from_currency={from}&to_currency={to}</div>
+                    
+                    <div class="params">
+                        <table>
+                            <tr>
+                                <th>Parameter</th>
+                                <th>Type</th>
+                                <th>Required</th>
+                                <th>Description</th>
+                            </tr>
+                            <tr>
+                                <td>from_currency</td>
+                                <td>string</td>
+                                <td class="optional">No</td>
+                                <td>Default: USD</td>
+                            </tr>
+                            <tr>
+                                <td>to_currency</td>
+                                <td>string</td>
+                                <td class="optional">No</td>
+                                <td>Default: CNY (CNY, EUR, JPY, etc.)</td>
+                            </tr>
+                        </table>
+                    </div>
+                    
+                    <div class="example">
+                        <h4>Example Request:</h4>
+                        <pre>GET /api/v1/tariff/exchange-rate?from_currency=USD&to_currency=CNY</pre>
+                        <button class="copy-btn" onclick="copyToClipboard('GET /api/v1/tariff/exchange-rate?from_currency=USD&to_currency=CNY')">Copy</button>
+                    </div>
+                    
+                    <button class="try-it" onclick="tryEndpoint('exchange')">Try it</button>
+                    <div id="exchange-response" class="response"></div>
+                </div>
+            </div>
+            
+            <!-- Sample Codes -->
+            <div class="section">
+                <h2>📋 Sample HS Codes</h2>
+                <table class="params" style="width: 100%;">
+                    <tr>
+                        <th>Country</th>
+                        <th>HS Code</th>
+                        <th>Description</th>
+                        <th>Duty Rate</th>
+                    </tr>
+                    <tr>
+                        <td>CN</td>
+                        <td>8703230010</td>
+                        <td>Cars, 1500-3000cc</td>
+                        <td>15%</td>
+                    </tr>
+                    <tr>
+                        <td>CN</td>
+                        <td>8703240010</td>
+                        <td>Cars, >3000cc</td>
+                        <td>15%</td>
+                    </tr>
+                    <tr>
+                        <td>CN</td>
+                        <td>8517130000</td>
+                        <td>Smartphones</td>
+                        <td>0%</td>
+                    </tr>
+                    <tr>
+                        <td>CN</td>
+                        <td>8471300000</td>
+                        <td>Laptops</td>
+                        <td>0%</td>
+                    </tr>
+                    <tr>
+                        <td>EU</td>
+                        <td>87032310</td>
+                        <td>Cars, 1500-3000cc</td>
+                        <td>10%</td>
+                    </tr>
+                    <tr>
+                        <td>EU</td>
+                        <td>85171300</td>
+                        <td>Smartphones</td>
+                        <td>0%</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>Tariff Navigator API v1.0 | Built with FastAPI & React</p>
+            <p style="margin-top: 10px; font-size: 0.9em;">To share: Start backend on your machine, friend accesses via your IP:8000</p>
+        </div>
+    </div>
+    
+    <script>
+        const BASE_URL = 'http://localhost:8000/api/v1';
+        
+        async function tryEndpoint(type) {
+            const responseDiv = document.getElementById(type + '-response');
+            responseDiv.classList.add('show');
+            responseDiv.innerHTML = '<span class="status success">Loading...</span>';
+            
+            let url = '';
+            let method = 'GET';
+            
+            switch(type) {
+                case 'health':
+                    url = `${BASE_URL}/health`;
+                    break;
+                case 'search':
+                    url = `${BASE_URL}/tariff/search?code=8703&country=CN`;
+                    break;
+                case 'autocomplete':
+                    url = `${BASE_URL}/tariff/autocomplete?query=car&country=CN`;
+                    break;
+                case 'calculate':
+                    url = `${BASE_URL}/tariff/calculate?hs_code=8703230010&country=CN&value=50000`;
+                    method = 'POST';
+                    break;
+                case 'calculate-currency':
+                    url = `${BASE_URL}/tariff/calculate-with-currency?hs_code=8703230010&country=CN&value=50000&from_currency=USD&to_currency=CNY`;
+                    method = 'POST';
+                    break;
+                case 'fta':
+                    url = `${BASE_URL}/tariff/fta-check?hs_code=8703230010&origin_country=JP&dest_country=CN`;
+                    break;
+                case 'exchange':
+                    url = `${BASE_URL}/tariff/exchange-rate?from_currency=USD&to_currency=CNY`;
+                    break;
+            }
+            
+            try {
+                const response = await fetch(url, { method });
+                const data = await response.json();
+                
+                responseDiv.innerHTML = `
+                    <span class="status ${response.ok ? 'success' : 'error'}">
+                        ${response.status} ${response.statusText}
+                    </span>
+                    <pre style="margin-top: 10px; overflow-x: auto;">${JSON.stringify(data, null, 2)}</pre>
+                `;
+            } catch (error) {
+                responseDiv.innerHTML = `
+                    <span class="status error">Error</span>
+                    <p style="margin-top: 10px;">${error.message}</p>
+                    <p style="margin-top: 10px; font-size: 0.9em; color: #666;">
+                        Make sure the backend is running on http://localhost:8000
+                    </p>
+                `;
+            }
+        }
+        
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                alert('Copied to clipboard!');
+            });
+        }
+    </script>
+</body>
+</html>
