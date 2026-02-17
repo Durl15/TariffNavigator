@@ -64,3 +64,4 @@ logs/
 # Temp files
 *.tmp
 .cache/
+backend/.env.txt

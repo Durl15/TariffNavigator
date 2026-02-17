@@ -33,7 +33,8 @@ function CostCalculator() {
     }
     setSearchLoading(true)
     try {
-      const response = await fetch(`http://localhost:8000/api/v1/tariff/autocomplete?query=${query}&country=${country}`)
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1'
+      const response = await fetch(`${apiUrl}/tariff/autocomplete?query=${query}&country=${country}`)
       const data = await response.json()
       setSuggestions(data)
     } catch (error) {
@@ -61,31 +62,33 @@ function CostCalculator() {
     setError('')
     setFtaResult(null)
     setExchangeRate(null)
-    
+
     try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1'
+
       // Calculate tariff with currency conversion
       const calcResponse = await fetch(
-        `http://localhost:8000/api/v1/tariff/calculate-with-currency?hs_code=${hsCode}&country=${country}&value=${value}&from_currency=USD&to_currency=${currency}`, 
+        `${apiUrl}/tariff/calculate-with-currency?hs_code=${hsCode}&country=${country}&value=${value}&from_currency=USD&to_currency=${currency}`,
         { method: 'POST' }
       )
-      
+
       if (!calcResponse.ok) {
         const err = await calcResponse.json()
         throw new Error(err.detail || 'Calculation failed')
       }
-      
+
       const calcData = await calcResponse.json()
       setResult(calcData)
       setExchangeRate(calcData.exchange_rate)
-      
+
       // Check FTA
       const originCountry = prompt("Enter origin country code (e.g., JP, US, DE, VN):") || "US"
       const ftaResponse = await fetch(
-        `http://localhost:8000/api/v1/tariff/fta-check?hs_code=${hsCode}&origin_country=${originCountry}&dest_country=${country}`
+        `${apiUrl}/tariff/fta-check?hs_code=${hsCode}&origin_country=${originCountry}&dest_country=${country}`
       )
       const ftaData = await ftaResponse.json()
       setFtaResult(ftaData)
-      
+
     } catch (error) {
       console.error('Error:', error)
       setError(error.message || 'Error calculating tariff')
