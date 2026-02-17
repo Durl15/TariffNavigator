@@ -33,7 +33,7 @@ function CostCalculator() {
     }
     setSearchLoading(true)
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1'
+      const apiUrl = import.meta.env.VITE_API_URL || 'https://tariffnavigator-backend.onrender.com/api/v1'
       const response = await fetch(`${apiUrl}/tariff/autocomplete?query=${query}&country=${country}`)
       const data = await response.json()
       setSuggestions(data)
@@ -64,7 +64,7 @@ function CostCalculator() {
     setExchangeRate(null)
 
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1'
+      const apiUrl = import.meta.env.VITE_API_URL || 'https://tariffnavigator-backend.onrender.com/api/v1'
 
       // Calculate tariff with currency conversion
       const calcResponse = await fetch(
