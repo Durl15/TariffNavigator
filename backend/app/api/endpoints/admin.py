@@ -796,6 +796,51 @@ async def get_system_stats(
     except:
         active_api_keys = 0
 
+    # Users created in last 7 days
+    seven_days_ago = now - timedelta(days=7)
+    users_last_7_days_result = await db.execute(
+        select(func.count(User.id)).where(
+            and_(
+                User.created_at >= seven_days_ago,
+                User.deleted_at.is_(None)
+            )
+        )
+    )
+    users_last_7_days = users_last_7_days_result.scalar()
+
+    # Calculations in last 7 days
+    calcs_last_7_days_result = await db.execute(
+        select(func.count(Calculation.id)).where(
+            Calculation.created_at >= seven_days_ago
+        )
+    )
+    calculations_last_7_days = calcs_last_7_days_result.scalar()
+
+    # Average calculation time (if duration_ms exists in Calculation)
+    try:
+        avg_calc_time_result = await db.execute(
+            select(func.avg(Calculation.duration_ms)).where(
+                Calculation.duration_ms.isnot(None)
+            )
+        )
+        avg_calculation_time_ms = avg_calc_time_result.scalar() or 0
+    except:
+        avg_calculation_time_ms = 0
+
+    # Average API response time from audit logs
+    try:
+        avg_api_time_result = await db.execute(
+            select(func.avg(AuditLog.duration_ms)).where(
+                AuditLog.duration_ms.isnot(None)
+            )
+        )
+        avg_api_response_time_ms = avg_api_time_result.scalar() or 0
+    except:
+        avg_api_response_time_ms = 0
+
+    # Storage calculation (rough estimate based on database size)
+    storage_used_mb = 0.0  # TODO: Implement actual storage calculation
+
     return SystemStats(
         total_users=total_users,
         active_users=active_users,
@@ -804,7 +849,12 @@ async def get_system_stats(
         calculations_today=calculations_today,
         calculations_this_month=calculations_this_month,
         total_shared_links=total_shared_links,
-        active_api_keys=active_api_keys
+        active_api_keys=active_api_keys,
+        storage_used_mb=storage_used_mb,
+        users_last_7_days=users_last_7_days,
+        calculations_last_7_days=calculations_last_7_days,
+        avg_calculation_time_ms=avg_calculation_time_ms,
+        avg_api_response_time_ms=avg_api_response_time_ms
     )
 
 
