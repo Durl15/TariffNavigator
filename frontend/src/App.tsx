@@ -6,6 +6,7 @@ import Dashboard from './pages/admin/Dashboard'
 import Users from './pages/admin/Users'
 import Organizations from './pages/admin/Organizations'
 import AuditLogs from './pages/admin/AuditLogs'
+import Login from './pages/Login'
 
 // COST CALCULATOR COMPONENT - With Autocomplete, FTA, and Currency
 function CostCalculator() {
@@ -325,6 +326,9 @@ function App() {
       <Routes>
         {/* Main calculator route */}
         <Route path="/" element={<CalculatorPage />} />
+
+        {/* Login route */}
+        <Route path="/login" element={<Login />} />
 
         {/* Admin routes */}
         <Route path="/admin" element={<AdminLayout />}>
