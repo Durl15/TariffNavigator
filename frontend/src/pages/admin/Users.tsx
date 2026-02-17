@@ -386,7 +386,7 @@ const UserModal: React.FC<UserModalProps> = ({ user, onClose, onSubmit }) => {
                 </label>
                 <select
                   value={formData.role}
-                  onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+                  onChange={(e) => setFormData({ ...formData, role: e.target.value as 'viewer' | 'user' | 'admin' | 'superadmin' })}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                 >
                   <option value="viewer">Viewer</option>
