@@ -71,7 +71,7 @@ async def calculate_tariff(
             "vat": round(vat, 2),
             "consumption_tax": round(consumption, 2),
             "total_cost": round(total, 2),
-            "currency": currency
+            "currency": from_currency
         }
     elif country.upper() == "EU":
         duty = cif_value * ((code_data.mfn_rate or 0) / 100)
@@ -83,7 +83,7 @@ async def calculate_tariff(
             "customs_duty": round(duty, 2),
             "vat": round(vat, 2),
             "total_cost": round(total, 2),
-            "currency": currency
+            "currency": from_currency
         }
     else:
         duty = cif_value * ((code_data.mfn_rate or 0) / 100)
