@@ -58,9 +58,10 @@ async def calculate_tariff(
     cif_value = value
     
     if country.upper() == "CN":
-        duty = cif_value * (code_data.mfn_rate / 100)
-        vat = (cif_value + duty) * (code_data.vat_rate / 100)
-        consumption = (cif_value + duty) / (1 - code_data.consumption_tax / 100) * (code_data.consumption_tax / 100) if code_data.consumption_tax > 0 else 0
+        duty = cif_value * ((code_data.mfn_rate or 0) / 100)
+        vat = (cif_value + duty) * ((code_data.vat_rate or 0) / 100)
+        consumption_tax_rate = code_data.consumption_tax or 0
+        consumption = (cif_value + duty) / (1 - consumption_tax_rate / 100) * (consumption_tax_rate / 100) if consumption_tax_rate > 0 else 0
         total = cif_value + duty + vat + consumption
         
         breakdown = {
@@ -72,8 +73,8 @@ async def calculate_tariff(
             "currency": currency
         }
     elif country.upper() == "EU":
-        duty = cif_value * (code_data.mfn_rate / 100)
-        vat = (cif_value + duty) * (code_data.vat_rate / 100)
+        duty = cif_value * ((code_data.mfn_rate or 0) / 100)
+        vat = (cif_value + duty) * ((code_data.vat_rate or 0) / 100)
         total = cif_value + duty + vat
         
         breakdown = {
@@ -84,7 +85,7 @@ async def calculate_tariff(
             "currency": currency
         }
     else:
-        duty = cif_value * (code_data.mfn_rate / 100)
+        duty = cif_value * ((code_data.mfn_rate or 0) / 100)
         total = cif_value + duty
         
         breakdown = {
@@ -99,9 +100,9 @@ async def calculate_tariff(
         "country": country,
         "description": code_data.description,
         "rates": {
-            "mfn": code_data.mfn_rate,
-            "vat": code_data.vat_rate,
-            "consumption": code_data.consumption_tax
+            "mfn": code_data.mfn_rate or 0,
+            "vat": code_data.vat_rate or 0,
+            "consumption": code_data.consumption_tax or 0
         },
         "calculation": breakdown
     }
