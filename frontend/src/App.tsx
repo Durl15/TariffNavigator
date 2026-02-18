@@ -67,9 +67,9 @@ function CostCalculator() {
     try {
       const apiUrl = import.meta.env.VITE_API_URL || 'https://tariffnavigator-backend.onrender.com/api/v1'
 
-      // Calculate tariff with currency conversion
+      // Calculate tariff
       const calcResponse = await fetch(
-        `${apiUrl}/tariff/calculate-with-currency?hs_code=${hsCode}&country=${country}&value=${value}&from_currency=USD&to_currency=${currency}`,
+        `${apiUrl}/tariff/calculate?hs_code=${hsCode}&country=${country}&value=${value}&currency=${currency}`,
         { method: 'POST' }
       )
 
@@ -80,15 +80,6 @@ function CostCalculator() {
 
       const calcData = await calcResponse.json()
       setResult(calcData)
-      setExchangeRate(calcData.exchange_rate)
-
-      // Check FTA
-      const originCountry = prompt("Enter origin country code (e.g., JP, US, DE, VN):") || "US"
-      const ftaResponse = await fetch(
-        `${apiUrl}/tariff/fta-check?hs_code=${hsCode}&origin_country=${originCountry}&dest_country=${country}`
-      )
-      const ftaData = await ftaResponse.json()
-      setFtaResult(ftaData)
 
     } catch (error) {
       console.error('Error:', error)
@@ -236,39 +227,31 @@ function CostCalculator() {
           <div className="space-y-2 mb-4">
             <div className="flex justify-between">
               <span className="text-gray-600">CIF Value</span>
-              <div className="text-right">
-                <div className="font-medium">{fmt(result.converted_calculation.cif_value)}</div>
-                {currency !== 'USD' && (
-                  <div className="text-xs text-gray-500">{fmtUSD(result.calculation.cif_value)}</div>
-                )}
-              </div>
+              <span className="font-medium">{fmtUSD(result.calculation.cif_value)}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-600">Customs Duty ({result.rates.mfn}%)</span>
-              <span className="font-medium">{fmt(result.converted_calculation.customs_duty)}</span>
+              <span className="font-medium">{fmtUSD(result.calculation.customs_duty)}</span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-gray-600">VAT ({result.rates.vat}%)</span>
-              <span className="font-medium">{fmt(result.converted_calculation.vat)}</span>
-            </div>
-            {result.converted_calculation.consumption_tax > 0 && (
+            {result.calculation.vat && (
+              <div className="flex justify-between">
+                <span className="text-gray-600">VAT ({result.rates.vat}%)</span>
+                <span className="font-medium">{fmtUSD(result.calculation.vat)}</span>
+              </div>
+            )}
+            {result.calculation.consumption_tax && result.calculation.consumption_tax > 0 && (
               <div className="flex justify-between text-red-600">
                 <span>Consumption Tax ({result.rates.consumption}%)</span>
-                <span className="font-medium">{fmt(result.converted_calculation.consumption_tax)}</span>
+                <span className="font-medium">{fmtUSD(result.calculation.consumption_tax)}</span>
               </div>
             )}
           </div>
 
           <div className="pt-2 border-t flex justify-between items-center">
             <span className="font-bold text-lg">Total Cost</span>
-            <div className="text-right">
-              <span className="text-2xl font-bold text-green-600">
-                {getCurrencyDisplay()}{result.converted_calculation.total_cost.toLocaleString()}
-              </span>
-              {currency !== 'USD' && (
-                <div className="text-xs text-gray-500">{fmtUSD(result.calculation.total_cost)}</div>
-              )}
-            </div>
+            <span className="text-2xl font-bold text-green-600">
+              {fmtUSD(result.calculation.total_cost)}
+            </span>
           </div>
         </div>
       )}
