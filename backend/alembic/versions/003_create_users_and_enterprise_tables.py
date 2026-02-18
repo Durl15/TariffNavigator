@@ -242,7 +242,7 @@ def upgrade() -> None:
     op.execute("""
         INSERT INTO organizations (id, name, slug, plan, status)
         VALUES (
-            'default-org-000-000-000-000-000000000',
+            '00000000-0000-0000-0000-000000000001',
             'Default Organization',
             'default',
             'free',
