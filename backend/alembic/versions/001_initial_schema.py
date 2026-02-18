@@ -33,7 +33,7 @@ def upgrade() -> None:
         sa.Column('updated_at', sa.DateTime(timezone=True), nullable=True),
         sa.PrimaryKeyConstraint('id')
     )
-    op.create_index(op.f('ix_hs_codes_code'), 'hs_codes', ['code'], unique=False)
+    op.create_index(op.f('ix_hs_codes_code'), 'hs_codes', ['code'], unique=True)
     op.create_index(op.f('ix_hs_codes_country'), 'hs_codes', ['country'], unique=False)
     op.create_index(op.f('ix_hs_codes_id'), 'hs_codes', ['id'], unique=False)
     # ### end Alembic commands ###
