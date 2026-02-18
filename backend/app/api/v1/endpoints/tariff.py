@@ -39,10 +39,11 @@ async def calculate_tariff(
     hs_code: str,
     country: str,
     value: float,
-    currency: str = "USD",
+    from_currency: str = "USD",
+    to_currency: str = "USD",
     db: AsyncSession = Depends(get_db)
 ):
-    """Calculate total import cost"""
+    """Calculate total import cost with currency conversion"""
     clean_code = hs_code.replace(".", "").replace(" ", "")
     result = await db.execute(
         select(HSCode).where(
@@ -92,10 +93,37 @@ async def calculate_tariff(
             "cif_value": round(cif_value, 2),
             "customs_duty": round(duty, 2),
             "total_cost": round(total, 2),
-            "currency": currency
+            "currency": from_currency
         }
-    
-    return {
+
+    # Currency conversion
+    rate = 1
+    if from_currency != to_currency:
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.get(
+                    f"https://api.exchangerate-api.com/v4/latest/{from_currency}",
+                    timeout=5.0
+                )
+                data = response.json()
+                rate = data["rates"].get(to_currency, 1)
+        except Exception:
+            mock_rates = {"USD": {"CNY": 7.2, "EUR": 0.92, "JPY": 150, "GBP": 0.79, "KRW": 1330}}
+            rate = mock_rates.get(from_currency, {}).get(to_currency, 1)
+
+    # Create converted calculation if needed
+    converted_calculation = None
+    if rate != 1:
+        converted_calculation = {
+            "cif_value": round(breakdown["cif_value"] * rate, 2),
+            "customs_duty": round(breakdown["customs_duty"] * rate, 2),
+            "vat": round(breakdown.get("vat", 0) * rate, 2),
+            "consumption_tax": round(breakdown.get("consumption_tax", 0) * rate, 2),
+            "total_cost": round(breakdown["total_cost"] * rate, 2),
+            "currency": to_currency
+        }
+
+    result = {
         "hs_code": hs_code,
         "country": country,
         "description": code_data.description,
@@ -106,6 +134,13 @@ async def calculate_tariff(
         },
         "calculation": breakdown
     }
+
+    if converted_calculation:
+        result["original_currency"] = from_currency
+        result["exchange_rate"] = rate
+        result["converted_calculation"] = converted_calculation
+
+    return result
 
 @router.get("/autocomplete")
 async def autocomplete_hs(
@@ -199,46 +234,4 @@ async def get_exchange_rate(
         "last_updated": last_updated
     }
 
-@router.api_route("/calculate", methods=["GET", "POST"])
-async def calculate_with_currency(
-    hs_code: str,
-    country: str,
-    value: float,
-    from_currency: str = "USD",
-    to_currency: str = "USD",
-    db: AsyncSession = Depends(get_db)
-):
-    """Calculate tariff and convert to local currency"""
-    calc_result = await calculate_tariff(hs_code, country, value, from_currency, db)
-    
-    if from_currency != to_currency:
-        try:
-            async with httpx.AsyncClient() as client:
-                response = await client.get(
-                    f"https://api.exchangerate-api.com/v4/latest/{from_currency}",
-                    timeout=5.0
-                )
-                data = response.json()
-                rate = data["rates"].get(to_currency, 1)
-        except Exception:
-            mock_rates = {"USD": {"CNY": 7.2, "EUR": 0.92, "JPY": 150, "GBP": 0.79, "KRW": 1330}}
-            rate = mock_rates.get(from_currency, {}).get(to_currency, 1)
-    else:
-        rate = 1
-    
-    calculation = calc_result["calculation"]
-    converted = {
-        "cif_value": round(calculation["cif_value"] * rate, 2),
-        "customs_duty": round(calculation["customs_duty"] * rate, 2),
-        "vat": round(calculation.get("vat", 0) * rate, 2),
-        "consumption_tax": round(calculation.get("consumption_tax", 0) * rate, 2),
-        "total_cost": round(calculation["total_cost"] * rate, 2),
-        "currency": to_currency
-    }
-    
-    return {
-        **calc_result,
-        "original_currency": from_currency,
-        "exchange_rate": rate,
-        "converted_calculation": converted
-    }
+# Removed duplicate calculate endpoint - currency conversion now integrated into main /calculate endpoint above
