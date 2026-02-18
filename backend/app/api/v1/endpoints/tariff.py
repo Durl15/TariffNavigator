@@ -226,12 +226,13 @@ async def calculate_with_currency(
     else:
         rate = 1
     
+    calculation = calc_result["calculation"]
     converted = {
-        "cif_value": round(calc_result["calculation"]["cif_value"] * rate, 2),
-        "customs_duty": round(calc_result["calculation"]["customs_duty"] * rate, 2),
-        "vat": round(calc_result["calculation"]["vat"] * rate, 2),
-        "consumption_tax": round(calc_result["calculation"]["consumption_tax"] * rate, 2),
-        "total_cost": round(calc_result["calculation"]["total_cost"] * rate, 2),
+        "cif_value": round(calculation["cif_value"] * rate, 2),
+        "customs_duty": round(calculation["customs_duty"] * rate, 2),
+        "vat": round(calculation.get("vat", 0) * rate, 2),
+        "consumption_tax": round(calculation.get("consumption_tax", 0) * rate, 2),
+        "total_cost": round(calculation["total_cost"] * rate, 2),
         "currency": to_currency
     }
     
