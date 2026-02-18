@@ -1,17 +1,28 @@
 ﻿from datetime import timedelta
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel
 
 from app.db.session import get_db
 from app.services.auth import (
-    authenticate_user, create_user, create_access_token, 
-    ACCESS_TOKEN_EXPIRE_MINUTES
+    authenticate_user, create_user, create_access_token,
+    ACCESS_TOKEN_EXPIRE_MINUTES, get_current_user_from_token
 )
 from app.models.user import User
 from sqlalchemy import select
 
 router = APIRouter()
+security = HTTPBearer()
+
+# Dependency to get current user from JWT token
+async def get_current_user(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    db: AsyncSession = Depends(get_db)
+) -> User:
+    """Extract and validate JWT token, return current user"""
+    token = credentials.credentials
+    return await get_current_user_from_token(token, db)
 
 # Request models
 class RegisterRequest(BaseModel):
@@ -49,16 +60,13 @@ async def login(request: LoginRequest, db: AsyncSession = Depends(get_db)):
     return {"access_token": access_token, "token_type": "bearer"}
 
 @router.get("/me")
-async def read_users_me(current_user: User = Depends(get_db)):
-    # Simplified - just return first user for now
-    result = await get_db()
-    async for db in result:
-        user = await db.execute(select(User))
-        first_user = user.scalar_one_or_none()
-        if first_user:
-            return {
-                "id": first_user.id,
-                "email": first_user.email,
-                "full_name": first_user.full_name
-            }
-    return {"message": "No users found"}
+async def read_users_me(current_user: User = Depends(get_current_user)):
+    """Get current authenticated user information"""
+    return {
+        "id": current_user.id,
+        "email": current_user.email,
+        "full_name": current_user.full_name,
+        "role": current_user.role,
+        "is_active": current_user.is_active,
+        "organization_id": current_user.organization_id
+    }

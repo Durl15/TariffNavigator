@@ -1,0 +1,68 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <title>Tariff Navigator</title>
+</head>
+<body>
+    <h1>Tariff Calculator</h1>
+    
+    <div>
+        <p>HS Code: <input type='text' id='hs' value='8703.23.00'></p>
+        <p>Origin: 
+            <select id='orig'>
+                <option value='CN'>China</option>
+                <option value='US'>US</option>
+                <option value='EU'>EU</option>
+            </select>
+        </p>
+        <p>Destination:
+            <select id='dest'>
+                <option value='US' selected>US</option>
+                <option value='EU'>EU</option>
+                <option value='CN'>China</option>
+            </select>
+        </p>
+        <p>Value: <input type='number' id='val' value='30000'></p>
+        <button onclick='calc()'>Calculate</button>
+    </div>
+    
+    <div id='out'></div>
+
+    <script>
+        function calc() {
+            var hs = document.getElementById('hs').value;
+            var orig = document.getElementById('orig').value;
+            var dest = document.getElementById('dest').value;
+            var val = document.getElementById('val').value;
+            var out = document.getElementById('out');
+            
+            out.innerHTML = 'Loading...';
+            
+            fetch('http://localhost:8000/api/v1/tariffs/calculate', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    hs_code: hs,
+                    origin: orig,
+                    destination: dest,
+                    value: parseFloat(val)
+                })
+            })
+            .then(r => r.json())
+            .then(data => {
+                var html = '<h2>Results:</h2>';
+                for(var i=0; i<data.applicable_rates.length; i++) {
+                    var rate = data.applicable_rates[i];
+                    var duty = (val * rate.duty_rate / 100).toFixed(2);
+                    html += '<p><b>' + rate.rate_type + '</b>: ' + rate.duty_rate + '% = $' + duty + '</p>';
+                }
+                html += '<h3>Total: $' + data.estimated_duty.toFixed(2) + '</h3>';
+                out.innerHTML = html;
+            })
+            .catch(e => {
+                out.innerHTML = '<p style="color:red">Error: ' + e.message + '</p>';
+            });
+        }
+    </script>
+</body>
+</html>

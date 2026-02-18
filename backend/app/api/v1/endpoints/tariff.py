@@ -3,10 +3,48 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from typing import Optional
+from pydantic import BaseModel, Field, field_validator
+import re
 from app.db.session import get_db
 from app.models.hs_code import HSCode
 
 router = APIRouter()
+
+# Request validation models
+class CalculateRequest(BaseModel):
+    """Request model for tariff calculation with input validation"""
+    hs_code: str = Field(..., min_length=4, max_length=12, description="HS code (4-10 digits, dots/spaces allowed)")
+    country: str = Field(..., min_length=2, max_length=2, description="Country code (CN, EU, US)")
+    value: float = Field(..., gt=0, le=999999999, description="CIF value in USD (must be positive)")
+    from_currency: str = Field(default="USD", min_length=3, max_length=3, description="Source currency code")
+    to_currency: str = Field(default="USD", min_length=3, max_length=3, description="Target currency code")
+
+    @field_validator('hs_code')
+    @classmethod
+    def validate_hs_code(cls, v: str) -> str:
+        """Validate HS code format - must contain only digits, dots, spaces"""
+        clean = v.replace(".", "").replace(" ", "")
+        if not re.match(r'^\d{4,10}$', clean):
+            raise ValueError('HS code must be 4-10 digits (dots and spaces are stripped)')
+        return v
+
+    @field_validator('country')
+    @classmethod
+    def validate_country(cls, v: str) -> str:
+        """Validate country code - must be CN, EU, or US"""
+        allowed = ['CN', 'EU', 'US']
+        if v.upper() not in allowed:
+            raise ValueError(f'Country must be one of: {", ".join(allowed)}')
+        return v.upper()
+
+    @field_validator('from_currency', 'to_currency')
+    @classmethod
+    def validate_currency(cls, v: str) -> str:
+        """Validate currency code"""
+        allowed = ['USD', 'CNY', 'EUR', 'JPY', 'GBP', 'KRW']
+        if v.upper() not in allowed:
+            raise ValueError(f'Currency must be one of: {", ".join(allowed)}')
+        return v.upper()
 
 @router.get("/search")
 async def search_tariff(
@@ -36,29 +74,44 @@ async def search_tariff(
 
 @router.post("/calculate")
 async def calculate_tariff(
-    hs_code: str,
-    country: str,
-    value: float,
-    from_currency: str = "USD",
-    to_currency: str = "USD",
+    hs_code: str = Query(..., description="HS code"),
+    country: str = Query(..., description="Country code"),
+    value: float = Query(..., gt=0, description="CIF value"),
+    from_currency: str = Query(default="USD", description="Source currency"),
+    to_currency: str = Query(default="USD", description="Target currency"),
     db: AsyncSession = Depends(get_db)
 ):
-    """Calculate total import cost with currency conversion"""
-    clean_code = hs_code.replace(".", "").replace(" ", "")
+    """Calculate total import cost with currency conversion and input validation"""
+    # Validate inputs using Pydantic model
+    try:
+        validated = CalculateRequest(
+            hs_code=hs_code,
+            country=country,
+            value=value,
+            from_currency=from_currency,
+            to_currency=to_currency
+        )
+    except Exception as e:
+        raise HTTPException(status_code=422, detail=str(e))
+
+    clean_code = validated.hs_code.replace(".", "").replace(" ", "")
     result = await db.execute(
         select(HSCode).where(
-            HSCode.country == country.upper(),
+            HSCode.country == validated.country,
             HSCode.code == clean_code
         )
     )
     code_data = result.scalar_one_or_none()
-    
+
     if not code_data:
-        raise HTTPException(status_code=404, detail=f"HS code {hs_code} not found for {country}")
+        raise HTTPException(
+            status_code=404,
+            detail=f"HS code {validated.hs_code} not found for {validated.country}"
+        )
+
+    cif_value = validated.value
     
-    cif_value = value
-    
-    if country.upper() == "CN":
+    if validated.country == "CN":
         duty = cif_value * ((code_data.mfn_rate or 0) / 100)
         vat = (cif_value + duty) * ((code_data.vat_rate or 0) / 100)
         consumption_tax_rate = code_data.consumption_tax or 0
@@ -71,9 +124,9 @@ async def calculate_tariff(
             "vat": round(vat, 2),
             "consumption_tax": round(consumption, 2),
             "total_cost": round(total, 2),
-            "currency": from_currency
+            "currency": validated.from_currency
         }
-    elif country.upper() == "EU":
+    elif validated.country == "EU":
         duty = cif_value * ((code_data.mfn_rate or 0) / 100)
         vat = (cif_value + duty) * ((code_data.vat_rate or 0) / 100)
         total = cif_value + duty + vat
@@ -83,7 +136,7 @@ async def calculate_tariff(
             "customs_duty": round(duty, 2),
             "vat": round(vat, 2),
             "total_cost": round(total, 2),
-            "currency": from_currency
+            "currency": validated.from_currency
         }
     else:
         duty = cif_value * ((code_data.mfn_rate or 0) / 100)
@@ -93,23 +146,23 @@ async def calculate_tariff(
             "cif_value": round(cif_value, 2),
             "customs_duty": round(duty, 2),
             "total_cost": round(total, 2),
-            "currency": from_currency
+            "currency": validated.from_currency
         }
 
     # Currency conversion
     rate = 1
-    if from_currency != to_currency:
+    if validated.from_currency != validated.to_currency:
         try:
             async with httpx.AsyncClient() as client:
                 response = await client.get(
-                    f"https://api.exchangerate-api.com/v4/latest/{from_currency}",
+                    f"https://api.exchangerate-api.com/v4/latest/{validated.from_currency}",
                     timeout=5.0
                 )
                 data = response.json()
-                rate = data["rates"].get(to_currency, 1)
+                rate = data["rates"].get(validated.to_currency, 1)
         except Exception:
             mock_rates = {"USD": {"CNY": 7.2, "EUR": 0.92, "JPY": 150, "GBP": 0.79, "KRW": 1330}}
-            rate = mock_rates.get(from_currency, {}).get(to_currency, 1)
+            rate = mock_rates.get(validated.from_currency, {}).get(validated.to_currency, 1)
 
     # Create converted calculation if needed
     converted_calculation = None
@@ -120,12 +173,12 @@ async def calculate_tariff(
             "vat": round(breakdown.get("vat", 0) * rate, 2),
             "consumption_tax": round(breakdown.get("consumption_tax", 0) * rate, 2),
             "total_cost": round(breakdown["total_cost"] * rate, 2),
-            "currency": to_currency
+            "currency": validated.to_currency
         }
 
     result = {
-        "hs_code": hs_code,
-        "country": country,
+        "hs_code": validated.hs_code,
+        "country": validated.country,
         "description": code_data.description,
         "rates": {
             "mfn": code_data.mfn_rate or 0,
@@ -136,7 +189,7 @@ async def calculate_tariff(
     }
 
     if converted_calculation:
-        result["original_currency"] = from_currency
+        result["original_currency"] = validated.from_currency
         result["exchange_rate"] = rate
         result["converted_calculation"] = converted_calculation
 
