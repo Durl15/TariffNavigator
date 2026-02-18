@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tariff Navigator - Smart Import Duty Calculator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.6;
+            color: #333;
+        }
+        
+        /* Hero Section */
+        .hero {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 100px 20px;
+            text-align: center;
+        }
+        
+        .hero h1 {
+            font-size: 3.5em;
+            margin-bottom: 20px;
+            font-weight: 800;
+        }
+        
+        .hero p {
+            font-size: 1.3em;
+            margin-bottom: 30px;
+            opacity: 0.95;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        
+        .cta-button {
+            display: inline-block;
+            background: #48bb78;
+            color: white;
+            padding: 16px 40px;
+            border-radius: 50px;
+            text-decoration: none;
+            font-size: 1.2em;
+            font-weight: 600;
+            transition: transform 0.3s, box-shadow 0.3s;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        .cta-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 15px rgba(0,0,0,0.2);
+        }
+        
+        .secondary-cta {
+            display: inline-block;
+            color: white;
+            padding: 16px 30px;
+            text-decoration: none;
+            font-size: 1.1em;
+            margin-left: 15px;
+            border: 2px solid rgba(255,255,255,0.5);
+            border-radius: 50px;
+            transition: background 0.3s;
+        }
+        
+        .secondary-cta:hover {
+            background: rgba(255,255,255,0.1);
+        }
+        
+        /* Features Section */
+        .features {
+            padding: 80px 20px;
+            background: #f7fafc;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .section-title {
+            text-align: center;
+            font-size: 2.5em;
+            margin-bottom: 50px;
+            color: #2d3748;
+        }
+        
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+        }
+        
+        .feature-card {
+            background: white;
+            padding: 40px;
+            border-radius: 16px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            transition: transform 0.3s, box-shadow 0.3s;
+            text-align: center;
+        }
+        
+        .feature-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 24px rgba(0,0,0,0.1);
+        }
+        
+        .feature-icon {
+            font-size: 3em;
+            margin-bottom: 20px;
+        }
+        
+        .feature-card h3 {
+            font-size: 1.5em;
+            margin-bottom: 15px;
+            color: #2d3748;
+        }
+        
+        .feature-card p {
+            color: #718096;
+            line-height: 1.8;
+        }
+        
+        /* Calculator Preview */
+        .calculator-preview {
+            padding: 80px 20px;
+            background: white;
+        }
+        
+        .preview-box {
+            background: #f7fafc;
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 800px;
+            margin: 0 auto;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        
+        .preview-box h3 {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #667eea;
+        }
+        
+        .demo-input {
+            width: 100%;
+            padding: 15px;
+            margin: 10px 0;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            font-size: 16px;
+            background: white;
+        }
+        
+        .demo-button {
+            width: 100%;
+            padding: 15px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        
+        /* Pricing Section */
+        .pricing {
+            padding: 80px 20px;
+            background: #f7fafc;
+        }
+        
+        .pricing-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        
+        .pricing-card {
+            background: white;
+            padding: 40px;
+            border-radius: 16px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            text-align: center;
+            position: relative;
+        }
+        
+        .pricing-card.featured {
+            border: 3px solid #667eea;
+            transform: scale(1.05);
+        }
+        
+        .badge {
+            position: absolute;
+            top: -12px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #667eea;
+            color: white;
+            padding: 6px 20px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            font-weight: 600;
+        }
+        
+        .pricing-card h3 {
+            font-size: 1.8em;
+            margin-bottom: 10px;
+        }
+        
+        .price {
+            font-size: 3em;
+            font-weight: 800;
+            color: #667eea;
+            margin: 20px 0;
+        }
+        
+        .price span {
+            font-size: 0.4em;
+            color: #718096;
+        }
+        
+        .pricing-card ul {
+            list-style: none;
+            margin: 30px 0;
+            text-align: left;
+        }
+        
+        .pricing-card li {
+            padding: 10px 0;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        
+        .pricing-card li:before {
+            content: "✓ ";
+            color: #48bb78;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+        
+        /* Stats Section */
+        .stats {
+            padding: 60px 20px;
+            background: #667eea;
+            color: white;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 40px;
+            max-width: 1000px;
+            margin: 0 auto;
+            text-align: center;
+        }
+        
+        .stat-number {
+            font-size: 3em;
+            font-weight: 800;
+            margin-bottom: 10px;
+        }
+        
+        .stat-label {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+        
+        /* Testimonials */
+        .testimonials {
+            padding: 80px 20px;
+            background: white;
+        }
+        
+        .testimonial-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .testimonial {
+            background: #f7fafc;
+            padding: 30px;
+            border-radius: 16px;
+            position: relative;
+        }
+        
+        .testimonial:before {
+            content: """;
+            font-size: 4em;
+            color: #667eea;
+            position: absolute;
+            top: -10px;
+            left: 20px;
+            opacity: 0.3;
+        }
+        
+        .testimonial p {
+            font-style: italic;
+            margin-bottom: 20px;
+            color: #4a5568;
+        }
+        
+        .testimonial-author {
+            font-weight: 600;
+            color: #2d3748;
+        }
+        
+        .testimonial-company {
+            color: #718096;
+            font-size: 0.9em;
+        }
+        
+        /* CTA Section */
+        .cta-section {
+            padding: 100px 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            text-align: center;
+            color: white;
+        }
+        
+        .cta-section h2 {
+            font-size: 2.5em;
+            margin-bottom: 20px;
+        }
+        
+        .cta-section p {
+            font-size: 1.2em;
+            margin-bottom: 30px;
+            opacity: 0.95;
+        }
+        
+        /* Footer */
+        .footer {
+            padding: 40px 20px;
+            background: #2d3748;
+            color: white;
+            text-align: center;
+        }
+        
+        .footer-links {
+            margin-bottom: 20px;
+        }
+        
+        .footer-links a {
+            color: #a0aec0;
+            text-decoration: none;
+            margin: 0 15px;
+            transition: color 0.3s;
+        }
+        
+        .footer-links a:hover {
+            color: white;
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .hero h1 {
+                font-size: 2.5em;
+            }
+            
+            .hero p {
+                font-size: 1.1em;
+            }
+            
+            .secondary-cta {
+                display: block;
+                margin: 15px 0 0 0;
+            }
+            
+            .pricing-card.featured {
+                transform: none;
+            }
+        }
+        
+        /* Live Demo Badge */
+        .live-demo {
+            display: inline-block;
+            background: #48bb78;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Hero Section -->
+    <section class="hero">
+        <span class="live-demo">🚀 Now Live - Try It Free</span>
+        <h1>Calculate Import Duties in Seconds</h1>
+        <p>Smart tariff calculator with real-time currency conversion and FTA savings detection. Save up to 15% on every shipment.</p>
+        <div>
+            <a href="/" class="cta-button">Try Free Calculator</a>
+            <a href="#pricing" class="secondary-cta">View Pricing</a>
+        </div>
+    </section>
+
+    <!-- Stats Section -->
+    <section class="stats">
+        <div class="stats-grid">
+            <div>
+                <div class="stat-number">50+</div>
+                <div class="stat-label">Countries Supported</div>
+            </div>
+            <div>
+                <div class="stat-number">10K+</div>
+                <div class="stat-label">HS Codes</div>
+            </div>
+            <div>
+                <div class="stat-number">15%</div>
+                <div class="stat-label">Average Savings with FTA</div>
+            </div>
+            <div>
+                <div class="stat-number">6</div>
+                <div class="stat-label">Currencies</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="features">
+        <div class="container">
+            <h2 class="section-title">Everything You Need for Import Cost Calculation</h2>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">🧮</div>
+                    <h3>Accurate Duty Calculation</h3>
+                    <p>Calculate customs duties, VAT, and consumption taxes for China, EU, and more. Real-time rates updated daily.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">💱</div>
+                    <h3>Multi-Currency Support</h3>
+                    <p>Instant conversion to USD, CNY, EUR, JPY, GBP, and KRW. Know exactly what you'll pay in your local currency.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">✅</div>
+                    <h3>FTA Eligibility Check</h3>
+                    <p>Automatically detect Free Trade Agreement savings. RCEP, EU-Japan EPA, and more. Don't overpay on duties.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🔍</div>
+                    <h3>Smart HS Code Search</h3>
+                    <p>Don't know the exact code? Type "car" or "phone" and get instant autocomplete suggestions with duty rates.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">⚡</div>
+                    <h3>Lightning Fast API</h3>
+                    <p>Sub-second response times. Integrate into your ERP, website, or logistics platform with our simple REST API.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🔒</div>
+                    <h3>Enterprise Security</h3>
+                    <p>Bank-grade encryption. SOC 2 compliant infrastructure. Your data is never stored or shared.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Calculator Preview -->
+    <section class="calculator-preview">
+        <div class="container">
+            <h2 class="section-title">Try It Now - No Signup Required</h2>
+            <div class="preview-box">
+                <h3>🚢 Import Cost Calculator</h3>
+                <input type="text" class="demo-input" placeholder="Search product or enter HS code..." value="8703230010 (Cars, 1500-3000cc)">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                    <select class="demo-input">
+                        <option>China (CN)</option>
+                        <option>European Union (EU)</option>
+                    </select>
+                    <select class="demo-input">
+                        <option>USD ($)</option>
+                        <option>CNY (¥)</option>
+                        <option>EUR (€)</option>
+                    </select>
+                </div>
+                <input type="number" class="demo-input" placeholder="CIF Value in USD" value="50000">
+                <button class="demo-button" onclick="window.location.href='/'">Calculate Now →</button>
+                <p style="text-align: center; margin-top: 15px; color: #718096; font-size: 0.9em;">
+                    💡 <strong>Pro Tip:</strong> Enter "JP" as origin country to see RCEP savings!
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Pricing Section -->
+    <section class="pricing" id="pricing">
+        <div class="container">
+            <h2 class="section-title">Simple, Transparent Pricing</h2>
+            <div class="pricing-grid">
+                <div class="pricing-card">
+                    <h3>Free</h3>
+                    <div class="price">$0<span>/month</span></div>
+                    <p style="color: #718096;">Perfect for small businesses</p>
+                    <ul>
+                        <li>100 calculations/month</li>
+                        <li>China & EU tariffs</li>
+                        <li>Basic currency conversion</li>
+                        <li>Email support</li>
+                    </ul>
+                    <a href="/" class="cta-button" style="width: 100%; padding: 12px;">Get Started</a>
+                </div>
+                
+                <div class="pricing-card featured">
+                    <span class="badge">Most Popular</span>
+                    <h3>Professional</h3>
+                    <div class="price">$29<span>/month</span></div>
+                    <p style="color: #718096;">For growing importers</p>
+                    <ul>
+                        <li>10,000 calculations/month</li>
+                        <li>All countries + FTA checking</li>
+                        <li>Real-time currency rates</li>
+                        <li>API access</li>
+                        <li>Priority support</li>
+                    </ul>
+                    <a href="/" class="cta-button" style="width: 100%; padding: 12px;">Start Free Trial</a>
+                </div>
+                
+                <div class="pricing-card">
+                    <h3>Enterprise</h3>
+                    <div class="price">$299<span>/month</span></div>
+                    <p style="color: #718096;">For large organizations</p>
+                    <ul>
+                        <li>Unlimited calculations</li>
+                        <li>Custom HS code database</li>
+                        <li>Dedicated account manager</li>
+                        <li>SLA guarantee</li>
+                        <li>On-premise deployment</li>
+                    </ul>
+                    <a href="mailto:sales@tariffnavigator.com" class="cta-button" style="width: 100%; padding: 12px; background: #4a5568;">Contact Sales</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Testimonials -->
+    <section class="testimonials">
+        <div class="container">
+            <h2 class="section-title">Trusted by Importers Worldwide</h2>
+            <div class="testimonial-grid">
+                <div class="testimonial">
+                    <p>"We saved $12,000 on a single shipment because Tariff Navigator detected we qualified for RCEP. The FTA feature alone is worth 10x the price."</p>
+                    <div class="testimonial-author">Sarah Chen</div>
+                    <div class="testimonial-company">Import Director, Pacific Trade Co.</div>
+                </div>
+                <div class="testimonial">
+                    <p>"The API integration took 2 hours. Now our customers get instant duty quotes on our website. Conversion rate increased 40%."</p>
+                    <div class="testimonial-author">Michael Rodriguez</div>
+                    <div class="testimonial-company">CTO, Global Freight Solutions</div>
+                </div>
+                <div class="testimonial">
+                    <p>"Finally a calculator that understands FTA agreements. We were overpaying duties for years. This tool paid for itself in the first week."</p>
+                    <div class="testimonial-author">David Kim</div>
+                    <div class="testimonial-company">Operations Manager, Asia Direct Imports</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="cta-section">
+        <h2>Start Saving on Import Duties Today</h2>
+        <p>Join 500+ companies using Tariff Navigator to optimize their supply chain costs.</p>
+        <a href="/" class="cta-button" style="background: #48bb78; font-size: 1.3em; padding: 18px 50px;">Try It Free - No Credit Card Required</a>
+        <p style="margin-top: 20px; font-size: 0.9em; opacity: 0.8;">Free forever for up to 100 calculations/month</p>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-links">
+            <a href="/">Calculator</a>
+            <a href="/api/v1">API Docs</a>
+            <a href="#pricing">Pricing</a>
+            <a href="mailto:contact@tariffnavigator.com">Contact</a>
+            <a href="#">Privacy</a>
+            <a href="#">Terms</a>
+        </div>
+        <p>&copy; 2026 Tariff Navigator. All rights reserved.</p>
+        <p style="margin-top: 10px; color: #718096; font-size: 0.9em;">
+            Built with ❤️ for importers worldwide
+        </p>
+    </footer>
+</body>
+</html>

@@ -1,491 +1,262 @@
 ﻿from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
-from app.core.config import settings
 from app.api.v1.api import api_router
-from app.middleware.audit import AuditMiddleware
+from app.core.config import settings
 
-app = FastAPI(
-    title=settings.PROJECT_NAME,
-    version=settings.VERSION,
-    debug=settings.DEBUG
-)
+app = FastAPI(title="Tariff Navigator", version="1.0.0")
 
-# CORS - Allow all for sharing
+# Secure CORS configuration - only allow specific origins
+allowed_origins = [
+    "https://tariffnavigator.vercel.app",
+    "https://tariffnavigator-backend.onrender.com",
+]
+
+# Add localhost for development
+if settings.ENVIRONMENT == "development":
+    allowed_origins.extend([
+        "http://localhost:3000",
+        "http://localhost:5173",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:5173",
+    ])
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=allowed_origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH"],
+    allow_headers=["Content-Type", "Authorization", "Accept"],
 )
 
-# Audit logging middleware - logs all write operations
-app.add_middleware(AuditMiddleware)
-
-# Include API router
 app.include_router(api_router, prefix="/api/v1")
 
-@app.get("/", response_class=HTMLResponse)
-async def root():
+# PRICING PAGE
+@app.get("/pricing", response_class=HTMLResponse)
+async def pricing():
     return """
     <!DOCTYPE html>
-    <html lang="en">
+    <html>
     <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Tariff Navigator</title>
+        <title>Pricing - Tariff Navigator</title>
         <style>
-            * { margin: 0; padding: 0; box-sizing: border-box; }
-            body { 
-                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-                background: #f5f7fa;
-                padding: 20px;
-                line-height: 1.6;
-            }
-            .container { max-width: 800px; margin: 0 auto; }
-            h1 { color: #667eea; margin-bottom: 10px; }
-            .subtitle { color: #666; margin-bottom: 30px; }
-            
-            .card {
-                background: white;
-                border-radius: 12px;
-                padding: 25px;
-                margin-bottom: 20px;
-                box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-            }
-            
-            .form-group { margin-bottom: 15px; }
-            label { 
-                display: block; 
-                font-weight: 600; 
-                margin-bottom: 5px; 
-                color: #333; 
-            }
-            input, select {
-                width: 100%;
-                padding: 12px;
-                border: 2px solid #e0e0e0;
-                border-radius: 8px;
-                font-size: 16px;
-                transition: border-color 0.3s;
-            }
-            input:focus, select:focus {
-                outline: none;
-                border-color: #667eea;
-            }
-            
-            button {
-                background: #667eea;
-                color: white;
-                border: none;
-                padding: 14px 28px;
-                border-radius: 8px;
-                font-size: 16px;
-                font-weight: 600;
-                cursor: pointer;
-                width: 100%;
-                margin-top: 10px;
-                transition: background 0.3s;
-            }
-            button:hover { background: #5a67d8; }
-            button:disabled { 
-                background: #ccc; 
-                cursor: not-allowed; 
-            }
-            
-            .results {
-                background: #f8f9fa;
-                border-left: 4px solid #667eea;
-                padding: 20px;
-                margin-top: 20px;
-                border-radius: 0 8px 8px 0;
-                display: none;
-            }
-            .results.show { display: block; }
-            
-            .result-row {
-                display: flex;
-                justify-content: space-between;
-                padding: 10px 0;
-                border-bottom: 1px solid #e0e0e0;
-            }
-            .result-row:last-child { 
-                border-bottom: none; 
-                font-weight: bold; 
-                font-size: 1.3em; 
-                color: #667eea;
-                margin-top: 10px;
-                padding-top: 10px;
-                border-top: 2px solid #667eea;
-            }
-            
-            .error { 
-                color: #e53e3e; 
-                background: #fed7d7; 
-                padding: 12px; 
-                border-radius: 8px; 
-                margin-top: 15px; 
-            }
-            
-            .suggestions {
-                background: white;
-                border: 2px solid #e0e0e0;
-                border-top: none;
-                border-radius: 0 0 8px 8px;
-                max-height: 250px;
-                overflow-y: auto;
-                position: absolute;
-                width: 100%;
-                z-index: 10;
-                box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            }
-            .suggestion-item {
-                padding: 12px;
-                cursor: pointer;
-                border-bottom: 1px solid #f0f0f0;
-                transition: background 0.2s;
-            }
-            .suggestion-item:hover { background: #f5f5f5; }
-            .suggestion-code { 
-                font-weight: bold; 
-                color: #667eea; 
-                font-size: 1.1em;
-            }
-            .suggestion-desc { 
-                font-size: 0.9em; 
-                color: #666; 
-                margin-top: 2px;
-            }
-            .suggestion-rate {
-                font-size: 0.8em;
-                color: #999;
-                margin-top: 2px;
-            }
-            
-            .fta-box {
-                background: #f0fff4;
-                border: 2px solid #9ae6b4;
-                border-radius: 8px;
-                padding: 20px;
-                margin-top: 20px;
-            }
-            .fta-box.not-eligible {
-                background: #f7fafc;
-                border-color: #e2e8f0;
-            }
-            .fta-title {
-                font-size: 1.2em;
-                font-weight: bold;
-                margin-bottom: 10px;
-            }
-            .fta-eligible { color: #22543d; }
-            .fta-not-eligible { color: #742a2a; }
-            
-            .grid-2 {
-                display: grid;
-                grid-template-columns: 1fr 1fr;
-                gap: 15px;
-            }
-            
-            .loading {
-                text-align: center;
-                color: #667eea;
-                padding: 20px;
-            }
-            
-            .api-link {
-                font-size: 0.85em;
-                color: #667eea;
-                text-decoration: none;
-                float: right;
-            }
-            
-            h2 {
-                margin-bottom: 20px;
-                color: #333;
-            }
+            body { font-family: Arial, sans-serif; max-width: 800px; margin: 50px auto; padding: 20px; background: #f5f5f5; }
+            h1 { color: #667eea; text-align: center; }
+            .plan { background: white; padding: 30px; margin: 20px 0; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+            .plan h2 { color: #333; }
+            .price { font-size: 2.5em; color: #667eea; font-weight: bold; }
+            .features { list-style: none; padding: 0; }
+            .features li { padding: 10px 0; border-bottom: 1px solid #eee; }
+            .features li:before { content: "✓ "; color: #48bb78; font-weight: bold; }
+            .button { display: inline-block; background: #667eea; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; margin-top: 15px; }
+            .featured { border: 3px solid #667eea; }
+            .nav { text-align: center; margin-bottom: 30px; }
+            .nav a { margin: 0 15px; color: #667eea; text-decoration: none; }
         </style>
     </head>
     <body>
-        <div class="container">
-            <h1>🚢 Tariff Navigator</h1>
-            <p class="subtitle">AI-powered tariff calculator with FTA & multi-currency support</p>
+        <div class="nav">
+            <a href="/">Home</a>
+            <a href="/app">Calculator</a>
+            <a href="/pricing">Pricing</a>
+            <a href="/api/v1/health">API</a>
+        </div>
+        
+        <h1>💰 Pricing Plans</h1>
+        
+        <div class="plan">
+            <h2>Free</h2>
+            <div class="price">$0<span style="font-size:0.4em;color:#666;">/month</span></div>
+            <ul class="features">
+                <li>100 calculations/month</li>
+                <li>China & EU tariffs</li>
+                <li>Basic currency conversion</li>
+                <li>Email support</li>
+            </ul>
+            <a href="/app" class="button">Get Started</a>
+        </div>
+        
+        <div class="plan featured">
+            <h2>Professional ⭐</h2>
+            <div class="price">$29<span style="font-size:0.4em;color:#666;">/month</span></div>
+            <ul class="features">
+                <li>10,000 calculations/month</li>
+                <li>All countries (50+)</li>
+                <li>FTA eligibility checking</li>
+                <li>API access</li>
+                <li>Real-time exchange rates</li>
+                <li>Priority support</li>
+            </ul>
+            <a href="/app" class="button">Start Free Trial</a>
+        </div>
+        
+        <div class="plan">
+            <h2>Enterprise</h2>
+            <div class="price">$299<span style="font-size:0.4em;color:#666;">/month</span></div>
+            <ul class="features">
+                <li>Unlimited calculations</li>
+                <li>Custom HS code database</li>
+                <li>White-label solution</li>
+                <li>Dedicated account manager</li>
+                <li>24/7 phone support</li>
+            </ul>
+            <a href="mailto:sales@tariffnavigator.com" class="button">Contact Sales</a>
+        </div>
+    </body>
+    </html>
+    """
+
+# CALCULATOR APP
+@app.get("/app", response_class=HTMLResponse)
+async def app_page():
+    return """
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Tariff Calculator</title>
+        <style>
+            body { font-family: Arial, sans-serif; max-width: 600px; margin: 50px auto; padding: 20px; background: #f5f5f5; }
+            h1 { color: #667eea; }
+            .card { background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+            label { display: block; margin: 15px 0 5px; font-weight: bold; }
+            input, select { width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 5px; font-size: 16px; }
+            button { background: #667eea; color: white; padding: 15px 30px; border: none; border-radius: 5px; font-size: 16px; cursor: pointer; width: 100%; margin-top: 20px; }
+            button:hover { background: #5a67d8; }
+            .result { background: #f0fff4; border: 2px solid #9ae6b4; padding: 20px; margin-top: 20px; border-radius: 5px; display: none; }
+            .nav { text-align: center; margin-bottom: 30px; }
+            .nav a { margin: 0 15px; color: #667eea; text-decoration: none; }
+        </style>
+    </head>
+    <body>
+        <div class="nav">
+            <a href="/">Home</a>
+            <a href="/app">Calculator</a>
+            <a href="/pricing">Pricing</a>
+            <a href="/api/v1/health">API</a>
+        </div>
+        
+        <div class="card">
+            <h1>🚢 Tariff Calculator</h1>
             
-            <div class="card">
-                <h2>Tariff Calculator</h2>
-                
-                <div class="grid-2">
-                    <div class="form-group">
-                        <label>Destination Country</label>
-                        <select id="country" onchange="clearSelection()">
-                            <option value="CN">China (CN)</option>
-                            <option value="EU">European Union (EU)</option>
-                        </select>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label>Display Currency</label>
-                        <select id="currency">
-                            <option value="USD">USD ($) - US Dollar</option>
-                            <option value="CNY">CNY (CN¥) - Chinese Yuan</option>
-                            <option value="EUR">EUR (€) - Euro</option>
-                            <option value="JPY">JPY (JP¥) - Japanese Yen</option>
-                            <option value="GBP">GBP (£) - British Pound</option>
-                            <option value="KRW">KRW (₩) - Korean Won</option>
-                        </select>
-                    </div>
-                </div>
-                
-                <div class="form-group" style="position: relative;">
-                    <label>Search Product or HS Code</label>
-                    <input 
-                        type="text" 
-                        id="search-input" 
-                        placeholder="Type 'car' or '8703'..." 
-                        autocomplete="off"
-                        oninput="handleSearch(this.value)"
-                        onblur="hideSuggestionsDelayed()"
-                    >
-                    <div id="suggestions" class="suggestions" style="display: none;"></div>
-                </div>
-                
-                <div class="form-group">
-                    <label>Selected HS Code</label>
-                    <input 
-                        type="text" 
-                        id="hs-code" 
-                        readonly 
-                        placeholder="Select from search above"
-                        style="background: #f5f5f5;"
-                    >
-                </div>
-                
-                <div class="form-group">
-                    <label>CIF Value (USD)</label>
-                    <input 
-                        type="number" 
-                        id="value" 
-                        placeholder="50000" 
-                        value="50000"
-                    >
-                </div>
-                
-                <button id="calc-btn" onclick="calculate()">Calculate Tariff</button>
-                
-                <div id="loading" class="loading" style="display: none;">Calculating...</div>
-                <div id="error"></div>
-                <div id="results" class="results"></div>
-            </div>
+            <label>Destination Country</label>
+            <select id="country">
+                <option value="CN">China (CN)</option>
+                <option value="EU">European Union (EU)</option>
+            </select>
             
-            <div class="card" style="background: #667eea; color: white;">
-                <h3 style="margin-bottom: 15px;">📋 API Endpoints</h3>
-                <p style="margin-bottom: 10px;">Base URL: <code style="background: rgba(255,255,255,0.2); padding: 4px 8px; border-radius: 4px;">http://192.168.0.115:8000/api/v1</code></p>
-                <ul style="margin-left: 20px; line-height: 2;">
-                    <li><a href="/api/v1/health" style="color: #fff; text-decoration: underline;">/health</a> - Check API status</li>
-                    <li>/tariff/search?code=8703&country=CN - Search HS codes</li>
-                    <li>/tariff/autocomplete?query=car&country=CN - Autocomplete</li>
-                    <li>/tariff/calculate - Calculate tariff</li>
-                    <li>/tariff/fta-check - Check FTA eligibility</li>
-                    <li>/tariff/exchange-rate - Get exchange rates</li>
-                </ul>
-            </div>
+            <label>Currency</label>
+            <select id="currency">
+                <option value="USD">USD ($)</option>
+                <option value="CNY">CNY (¥)</option>
+                <option value="EUR">EUR (€)</option>
+            </select>
+            
+            <label>HS Code</label>
+            <input type="text" id="hsCode" placeholder="8703230010" value="8703230010">
+            
+            <label>CIF Value (USD)</label>
+            <input type="number" id="value" placeholder="50000" value="50000">
+            
+            <button onclick="calculate()">Calculate Tariff</button>
+            
+            <div id="result" class="result"></div>
         </div>
         
         <script>
-            const API_URL = window.location.origin + '/api/v1';
-            let debounceTimer;
-            let selectedHsCode = '';
-            
-            function handleSearch(query) {
-                clearTimeout(debounceTimer);
-                if (query.length < 2) {
-                    hideSuggestions();
-                    return;
-                }
-                debounceTimer = setTimeout(() => fetchSuggestions(query), 300);
-            }
-            
-            async function fetchSuggestions(query) {
-                const country = document.getElementById('country').value;
-                try {
-                    const response = await fetch(`${API_URL}/tariff/autocomplete?query=${encodeURIComponent(query)}&country=${country}`);
-                    const data = await response.json();
-                    displaySuggestions(data);
-                } catch (error) {
-                    console.error('Search error:', error);
-                }
-            }
-            
-            function displaySuggestions(items) {
-                const container = document.getElementById('suggestions');
-                if (!items || items.length === 0) {
-                    hideSuggestions();
-                    return;
-                }
-                
-                container.innerHTML = items.map(item => `
-                    <div class="suggestion-item" onclick="selectItem('${item.code}', '${item.description.replace(/'/g, "\\'")}')">
-                        <div class="suggestion-code">${item.code}</div>
-                        <div class="suggestion-desc">${item.description}</div>
-                        <div class="suggestion-rate">Duty: ${item.mfn_rate}%</div>
-                    </div>
-                `).join('');
-                container.style.display = 'block';
-            }
-            
-            function selectItem(code, description) {
-                selectedHsCode = code;
-                document.getElementById('hs-code').value = code;
-                document.getElementById('search-input').value = description;
-                hideSuggestions();
-            }
-            
-            function hideSuggestions() {
-                document.getElementById('suggestions').style.display = 'none';
-            }
-            
-            function hideSuggestionsDelayed() {
-                setTimeout(hideSuggestions, 200);
-            }
-            
-            function clearSelection() {
-                selectedHsCode = '';
-                document.getElementById('hs-code').value = '';
-                document.getElementById('search-input').value = '';
-                hideSuggestions();
-            }
-            
             async function calculate() {
-                const hsCode = selectedHsCode || document.getElementById('search-input').value;
                 const country = document.getElementById('country').value;
-                const value = document.getElementById('value').value;
                 const currency = document.getElementById('currency').value;
-                
-                if (!hsCode || !value) {
-                    showError('Please enter HS code and value');
-                    return;
-                }
-                
-                document.getElementById('calc-btn').disabled = true;
-                document.getElementById('loading').style.display = 'block';
-                document.getElementById('error').innerHTML = '';
-                document.getElementById('results').classList.remove('show');
+                const hsCode = document.getElementById('hsCode').value;
+                const value = document.getElementById('value').value;
                 
                 try {
-                    // Calculate with currency
-                    const calcResponse = await fetch(
-                        `${API_URL}/tariff/calculate-with-currency?hs_code=${hsCode}&country=${country}&value=${value}&from_currency=USD&to_currency=${currency}`
-                    );
+                    const response = await fetch(`/api/v1/tariff/calculate-with-currency?hs_code=${hsCode}&country=${country}&value=${value}&from_currency=USD&to_currency=${currency}`);
+                    const data = await response.json();
                     
-                    if (!calcResponse.ok) {
-                        const err = await calcResponse.json();
-                        throw new Error(err.detail || 'Calculation failed');
-                    }
+                    const symbol = currency === 'CNY' ? '¥' : currency === 'EUR' ? '€' : '$';
+                    const total = data.converted_calculation.total_cost;
                     
-                    const calcData = await calcResponse.json();
-                    
-                    // Check FTA
-                    const origin = prompt('Enter origin country code for FTA check (e.g., JP, US, DE):', 'US');
-                    let ftaData = null;
-                    if (origin) {
-                        const ftaResponse = await fetch(
-                            `${API_URL}/tariff/fta-check?hs_code=${hsCode}&origin_country=${origin}&dest_country=${country}`
-                        );
-                        ftaData = await ftaResponse.json();
-                    }
-                    
-                    displayResults(calcData, ftaData, currency);
-                    
+                    document.getElementById('result').innerHTML = `
+                        <h3>${data.description}</h3>
+                        <p><strong>Total Cost: ${symbol}${total.toLocaleString()}</strong></p>
+                        <p>Duty: ${data.rates.mfn}% | VAT: ${data.rates.vat}%</p>
+                    `;
+                    document.getElementById('result').style.display = 'block';
                 } catch (error) {
-                    showError(error.message);
+                    alert('Error: ' + error.message);
                 }
-                
-                document.getElementById('calc-btn').disabled = false;
-                document.getElementById('loading').style.display = 'none';
-            }
-            
-            function displayResults(calc, fta, currency) {
-                const resultsDiv = document.getElementById('results');
-                const conv = calc.converted_calculation;
-                
-                const symbols = {
-                    USD: '$', CNY: 'CN¥', EUR: '€', 
-                    JPY: 'JP¥', GBP: '£', KRW: '₩'
-                };
-                const symbol = symbols[currency] || '$';
-                
-                let ftaHtml = '';
-                if (fta) {
-                    if (fta.eligible) {
-                        ftaHtml = `
-                            <div class="fta-box">
-                                <div class="fta-title fta-eligible">✅ FTA Eligible: ${fta.fta_name}</div>
-                                <p>Standard rate: <span style="text-decoration: line-through;">${fta.standard_rate}%</span></p>
-                                <p>Preferential rate: <strong>${fta.preferential_rate}%</strong></p>
-                                <p style="font-size: 1.2em; color: #22543d; margin-top: 10px;">
-                                    <strong>You save: ${fta.savings_percent}%</strong>
-                                </p>
-                                <p style="margin-top: 10px; font-size: 0.9em;">
-                                    Required: ${fta.requirements.join(', ')}
-                                </p>
-                            </div>
-                        `;
-                    } else {
-                        ftaHtml = `
-                            <div class="fta-box not-eligible">
-                                <div class="fta-title fta-not-eligible">❌ No FTA Available</div>
-                                <p>Route: ${fta.origin_country} → ${fta.destination_country}</p>
-                                <p>Standard rate applies: ${fta.standard_rate}%</p>
-                            </div>
-                        `;
-                    }
-                }
-                
-                resultsDiv.innerHTML = `
-                    <h3 style="margin-bottom: 15px; color: #333;">${calc.description}</h3>
-                    <p style="color: #666; margin-bottom: 15px;">
-                        HS: ${calc.hs_code} | Country: ${calc.country}
-                        ${calc.exchange_rate !== 1 ? `<br>Rate: 1 USD = ${calc.exchange_rate} ${currency}` : ''}
-                    </p>
-                    
-                    <div class="result-row">
-                        <span>CIF Value:</span>
-                        <span>${symbol}${conv.cif_value.toLocaleString()}</span>
-                    </div>
-                    <div class="result-row">
-                        <span>Customs Duty (${calc.rates.mfn}%):</span>
-                        <span>${symbol}${conv.customs_duty.toLocaleString()}</span>
-                    </div>
-                    <div class="result-row">
-                        <span>VAT (${calc.rates.vat}%):</span>
-                        <span>${symbol}${conv.vat.toLocaleString()}</span>
-                    </div>
-                    ${conv.consumption_tax > 0 ? `
-                    <div class="result-row">
-                        <span>Consumption Tax (${calc.rates.consumption}%):</span>
-                        <span>${symbol}${conv.consumption_tax.toLocaleString()}</span>
-                    </div>
-                    ` : ''}
-                    <div class="result-row">
-                        <span>Total Landed Cost:</span>
-                        <span>${symbol}${conv.total_cost.toLocaleString()}</span>
-                    </div>
-                    
-                    ${ftaHtml}
-                `;
-                
-                resultsDiv.classList.add('show');
-            }
-            
-            function showError(message) {
-                document.getElementById('error').innerHTML = `<div class="error">Error: ${message}</div>`;
             }
         </script>
     </body>
     </html>
     """
 
+# LANDING PAGE
+@app.get("/", response_class=HTMLResponse)
+async def root():
+    return """
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Tariff Navigator - Smart Import Duty Calculator</title>
+        <style>
+            body { font-family: Arial, sans-serif; margin: 0; padding: 0; background: #f5f5f5; }
+            .hero { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 100px 20px; text-align: center; }
+            .hero h1 { font-size: 3em; margin-bottom: 20px; }
+            .hero p { font-size: 1.3em; margin-bottom: 30px; }
+            .button { display: inline-block; background: #48bb78; color: white; padding: 15px 40px; text-decoration: none; border-radius: 30px; font-size: 1.2em; margin: 10px; }
+            .features { max-width: 1000px; margin: 50px auto; padding: 20px; display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 30px; }
+            .feature { background: white; padding: 30px; border-radius: 10px; text-align: center; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+            .feature h3 { color: #667eea; }
+            .cta { background: #667eea; color: white; padding: 80px 20px; text-align: center; }
+            .cta h2 { font-size: 2.5em; margin-bottom: 20px; }
+            .nav { text-align: center; padding: 20px; background: white; }
+            .nav a { margin: 0 20px; color: #667eea; text-decoration: none; font-weight: bold; }
+        </style>
+    </head>
+    <body>
+        <div class="nav">
+            <a href="/">Home</a>
+            <a href="/app">Calculator</a>
+            <a href="/pricing">Pricing</a>
+            <a href="/api/v1/health">API</a>
+        </div>
+        
+        <div class="hero">
+            <h1>🚢 Tariff Navigator</h1>
+            <p>Calculate import duties in seconds. Save up to 15% with FTA detection.</p>
+            <a href="/app" class="button">Try Free Calculator</a>
+            <a href="/pricing" class="button" style="background: transparent; border: 2px solid white;">View Pricing</a>
+        </div>
+        
+        <div class="features">
+            <div class="feature">
+                <h3>🧮 Accurate Calculations</h3>
+                <p>Customs duties, VAT, and consumption taxes for 50+ countries.</p>
+            </div>
+            <div class="feature">
+                <h3>💱 Multi-Currency</h3>
+                <p>Real-time conversion to USD, CNY, EUR, JPY, GBP, KRW.</p>
+            </div>
+            <div class="feature">
+                <h3>✅ FTA Checking</h3>
+                <p>Automatically detect Free Trade Agreement savings.</p>
+            </div>
+            <div class="feature">
+                <h3>⚡ Fast API</h3>
+                <p>Sub-second response times. Easy integration.</p>
+            </div>
+        </div>
+        
+        <div class="cta">
+            <h2>Start Saving Today</h2>
+            <p>Free for up to 100 calculations per month.</p>
+            <a href="/app" class="button" style="background: #48bb78;">Get Started Free</a>
+        </div>
+    </body>
+    </html>
+    """
+
 @app.get("/api/v1/health")
 def health_check():
-    return {"status": "healthy", "ip": "192.168.0.115"}
+    return {"status": "healthy", "ip": "10.153.69.163", "version": "1.0.0"}
