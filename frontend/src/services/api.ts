@@ -101,3 +101,205 @@ export function downloadBlob(blob: Blob, filename: string) {
   document.body.removeChild(link)
   URL.revokeObjectURL(url)
 }
+
+// ============================================================================
+// SAVED CALCULATIONS & FAVORITES
+// ============================================================================
+
+// Types
+export interface Calculation {
+  id: string
+  user_id: string
+  organization_id?: string
+  name?: string
+  description?: string
+  hs_code: string
+  product_description?: string
+  origin_country: string
+  destination_country: string
+  cif_value: number
+  currency: string
+  result: any
+  total_cost: number
+  customs_duty?: number
+  vat_amount?: number
+  fta_eligible: boolean
+  fta_savings?: number
+  is_favorite: boolean
+  tags?: string[]
+  view_count: number
+  created_at: string
+  updated_at?: string
+}
+
+export interface CalculationListItem {
+  id: string
+  name?: string
+  hs_code: string
+  product_description?: string
+  origin_country: string
+  destination_country: string
+  total_cost: number
+  currency: string
+  is_favorite: boolean
+  tags?: string[]
+  created_at: string
+}
+
+export interface CalculationListResponse {
+  calculations: CalculationListItem[]
+  total: number
+  page: number
+  page_size: number
+  total_pages: number
+}
+
+export interface SaveCalculationRequest {
+  name: string
+  description?: string
+  tags?: string[]
+  hs_code: string
+  product_description?: string
+  origin_country: string
+  destination_country: string
+  cif_value: number
+  currency: string
+  result: any
+  total_cost: number
+  customs_duty?: number
+  vat_amount?: number
+  fta_eligible: boolean
+  fta_savings?: number
+}
+
+// Get saved calculations
+export async function getSavedCalculations(
+  page: number = 1,
+  pageSize: number = 20,
+  search?: string,
+  tag?: string,
+  sortBy: 'created_at' | 'name' | 'total_cost' = 'created_at',
+  sortOrder: 'asc' | 'desc' = 'desc'
+): Promise<CalculationListResponse> {
+  const params = new URLSearchParams({
+    page: page.toString(),
+    page_size: pageSize.toString(),
+    sort_by: sortBy,
+    sort_order: sortOrder,
+  })
+
+  if (search) params.append('search', search)
+  if (tag) params.append('tag', tag)
+
+  const response = await api.get(`/calculations/saved?${params.toString()}`, {
+    headers: {
+      'Authorization': `Bearer ${localStorage.getItem('token')}`,
+    },
+  })
+  return response.data
+}
+
+// Get favorite calculations
+export async function getFavoriteCalculations(
+  page: number = 1,
+  pageSize: number = 20
+): Promise<CalculationListResponse> {
+  const response = await api.get(`/calculations/favorites?page=${page}&page_size=${pageSize}`, {
+    headers: {
+      'Authorization': `Bearer ${localStorage.getItem('token')}`,
+    },
+  })
+  return response.data
+}
+
+// Get single calculation
+export async function getCalculation(id: string): Promise<Calculation> {
+  const response = await api.get(`/calculations/${id}`, {
+    headers: {
+      'Authorization': `Bearer ${localStorage.getItem('token')}`,
+    },
+  })
+  return response.data
+}
+
+// Save calculation with metadata
+export async function saveCalculation(
+  data: SaveCalculationRequest
+): Promise<Calculation> {
+  const response = await api.post(`/calculations/save`, data, {
+    headers: {
+      'Authorization': `Bearer ${localStorage.getItem('token')}`,
+    },
+  })
+  return response.data
+}
+
+// Toggle favorite status
+export async function toggleFavorite(
+  id: string,
+  isFavorite: boolean
+): Promise<{ id: string; is_favorite: boolean; message: string }> {
+  const response = await api.put(
+    `/calculations/${id}/favorite?is_favorite=${isFavorite}`,
+    null,
+    {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+      },
+    }
+  )
+  return response.data
+}
+
+// Update calculation metadata
+export async function updateCalculation(
+  id: string,
+  data: {
+    name?: string
+    description?: string
+    tags?: string[]
+  }
+): Promise<Calculation> {
+  const response = await api.put(`/calculations/${id}`, data, {
+    headers: {
+      'Authorization': `Bearer ${localStorage.getItem('token')}`,
+    },
+  })
+  return response.data
+}
+
+// Delete calculation (soft delete)
+export async function deleteCalculation(id: string): Promise<void> {
+  await api.delete(`/calculations/${id}`, {
+    headers: {
+      'Authorization': `Bearer ${localStorage.getItem('token')}`,
+    },
+  })
+}
+
+// Duplicate calculation
+export async function duplicateCalculation(id: string): Promise<Calculation> {
+  const response = await api.post(`/calculations/${id}/duplicate`, null, {
+    headers: {
+      'Authorization': `Bearer ${localStorage.getItem('token')}`,
+    },
+  })
+  return response.data
+}
+
+// Create share link
+export async function createShareLink(
+  id: string,
+  expiresHours?: number
+): Promise<{ share_token: string; share_url: string; expires_at?: string; created_at: string }> {
+  const url = expiresHours
+    ? `/calculations/${id}/share?expires_hours=${expiresHours}`
+    : `/calculations/${id}/share`
+
+  const response = await api.post(url, null, {
+    headers: {
+      'Authorization': `Bearer ${localStorage.getItem('token')}`,
+    },
+  })
+  return response.data
+}
