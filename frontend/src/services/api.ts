@@ -1,7 +1,10 @@
 ﻿import axios from 'axios'
 
+// Use environment variable for API URL, fallback to production URL
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://tariffnavigator-backend.onrender.com/api/v1'
+
 export const api = axios.create({
-  baseURL: '/api/v1',
+  baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
   },
