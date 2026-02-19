@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from app.api.v1.api import api_router
 from app.core.config import settings
+from app.middleware.rate_limit import RateLimitMiddleware
 
 app = FastAPI(title="Tariff Navigator", version="1.0.0")
 
@@ -28,6 +29,9 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH"],
     allow_headers=["Content-Type", "Authorization", "Accept"],
 )
+
+# Add rate limiting middleware (AFTER CORS, BEFORE routes)
+app.add_middleware(RateLimitMiddleware)
 
 app.include_router(api_router, prefix="/api/v1")
 

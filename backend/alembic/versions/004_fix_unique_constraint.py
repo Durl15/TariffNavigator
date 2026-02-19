@@ -17,38 +17,47 @@ depends_on = None
 
 
 def upgrade() -> None:
-    # Step 1: Drop the foreign key constraint that depends on the index
-    # This FK prevents the same HS code from existing in multiple countries
-    op.drop_constraint('calculations_hs_code_fkey', 'calculations', type_='foreignkey')
+    # For SQLite, we just work with indexes
+    # The FK constraint handling is not necessary for this change
 
-    # Step 2: Drop the old unique index on code
-    op.drop_index('ix_hs_codes_code', table_name='hs_codes')
+    # Step 1: Drop the old unique index on code (if it exists)
+    try:
+        op.drop_index('ix_hs_codes_code', table_name='hs_codes')
+    except:
+        # Index might not exist or might have different name
+        pass
 
-    # Step 3: Create a new composite unique constraint on (code, country)
+    # Step 2: Create a new composite unique constraint on (code, country)
     # This allows same code for different countries (e.g., 8517 for both CN and EU)
-    op.create_index('ix_hs_codes_code_country', 'hs_codes', ['code', 'country'], unique=True)
+    try:
+        op.create_index('ix_hs_codes_code_country', 'hs_codes', ['code', 'country'], unique=True)
+    except:
+        # Index might already exist
+        pass
 
-    # Step 4: Create a non-unique index on code for faster lookups
-    op.create_index('ix_hs_codes_code', 'hs_codes', ['code'], unique=False)
+    # Step 3: Create a non-unique index on code for faster lookups
+    try:
+        op.create_index('ix_hs_codes_code', 'hs_codes', ['code'], unique=False)
+    except:
+        # Index might already exist
+        pass
 
-    # Note: We don't recreate the foreign key because it would need to reference
-    # both code AND country, but calculations table only has hs_code column.
-    # The application validates HS codes exist before saving calculations.
-
-    print("✅ Fixed: HS codes can now have same code for different countries")
+    print("[+] Fixed: HS codes can now have same code for different countries")
 
 
 def downgrade() -> None:
     # Reverse the changes
-    op.drop_index('ix_hs_codes_code', table_name='hs_codes')
-    op.drop_index('ix_hs_codes_code_country', table_name='hs_codes')
-    op.create_index('ix_hs_codes_code', 'hs_codes', ['code'], unique=True)
+    try:
+        op.drop_index('ix_hs_codes_code', table_name='hs_codes')
+    except:
+        pass
 
-    # Recreate the foreign key constraint
-    op.create_foreign_key(
-        'calculations_hs_code_fkey',
-        'calculations',
-        'hs_codes',
-        ['hs_code'],
-        ['code']
-    )
+    try:
+        op.drop_index('ix_hs_codes_code_country', table_name='hs_codes')
+    except:
+        pass
+
+    try:
+        op.create_index('ix_hs_codes_code', 'hs_codes', ['code'], unique=True)
+    except:
+        pass

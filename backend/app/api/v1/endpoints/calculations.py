@@ -12,6 +12,7 @@ import math
 
 from app.db.session import get_db
 from app.api.deps import get_current_user
+from app.api.deps_rate_limit import check_user_rate_limit, check_calculation_quota
 from app.models.user import User
 from app.models.calculation import Calculation, SharedLink
 from app.schemas.calculation import (
@@ -31,7 +32,7 @@ router = APIRouter()
 # LIST & RETRIEVE ENDPOINTS
 # ============================================================================
 
-@router.get("/saved", response_model=CalculationListResponse)
+@router.get("/saved", response_model=CalculationListResponse, dependencies=[Depends(check_user_rate_limit)])
 async def list_saved_calculations(
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(20, ge=1, le=100, description="Items per page"),
@@ -123,7 +124,7 @@ async def list_saved_calculations(
     )
 
 
-@router.get("/favorites", response_model=CalculationListResponse)
+@router.get("/favorites", response_model=CalculationListResponse, dependencies=[Depends(check_user_rate_limit)])
 async def list_favorite_calculations(
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(20, ge=1, le=100, description="Items per page"),
@@ -248,7 +249,8 @@ async def get_calculation(
 # CREATE & SAVE ENDPOINTS
 # ============================================================================
 
-@router.post("/save", response_model=CalculationResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/save", response_model=CalculationResponse, status_code=status.HTTP_201_CREATED,
+             dependencies=[Depends(check_user_rate_limit), Depends(check_calculation_quota)])
 async def save_calculation(
     save_data: CalculationSaveRequest,
     db: AsyncSession = Depends(get_db),
@@ -467,7 +469,8 @@ async def delete_calculation(
     return None
 
 
-@router.post("/{calc_id}/duplicate", response_model=CalculationResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/{calc_id}/duplicate", response_model=CalculationResponse, status_code=status.HTTP_201_CREATED,
+             dependencies=[Depends(check_user_rate_limit), Depends(check_calculation_quota)])
 async def duplicate_calculation(
     calc_id: str,
     db: AsyncSession = Depends(get_db),
@@ -558,7 +561,8 @@ async def duplicate_calculation(
 # SHARING ENDPOINTS
 # ============================================================================
 
-@router.post("/{calc_id}/share", response_model=ShareLinkResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/{calc_id}/share", response_model=ShareLinkResponse, status_code=status.HTTP_201_CREATED,
+             dependencies=[Depends(check_user_rate_limit)])
 async def create_share_link(
     calc_id: str,
     expires_hours: Optional[int] = Query(None, ge=1, le=8760, description="Expiry in hours (max 1 year)"),
