@@ -9,8 +9,11 @@ import Organizations from './pages/admin/Organizations'
 import AuditLogs from './pages/admin/AuditLogs'
 import Login from './pages/Login'
 import UserDashboard from './pages/Dashboard'
-import { exportPDF, downloadBlob } from './services/api'
+import { exportPDF, downloadBlob, getCalculation } from './services/api'
 import SearchFilters, { type SearchFilterValues } from './components/SearchFilters'
+import SavedCalculationsSidebar from './components/SavedCalculationsSidebar'
+import SaveCalculationModal from './components/SaveCalculationModal'
+import { Bookmark, Save } from 'lucide-react'
 
 // COST CALCULATOR COMPONENT - With Autocomplete, FTA, and Currency
 function CostCalculator() {
@@ -24,6 +27,10 @@ function CostCalculator() {
   const [ftaResult, setFtaResult] = useState(null)
   const [exchangeRate, setExchangeRate] = useState(null)
   const [isPdfExporting, setIsPdfExporting] = useState(false)
+
+  // Saved calculations states
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [saveModalOpen, setSaveModalOpen] = useState(false)
 
   // Autocomplete states
   const [searchQuery, setSearchQuery] = useState('')
@@ -148,6 +155,23 @@ function CostCalculator() {
       toast.error('Failed to export PDF. Please try again.')
     } finally {
       setIsPdfExporting(false)
+    }
+  }
+
+  const loadCalculation = async (calcId: string) => {
+    try {
+      const calc = await getCalculation(calcId)
+      // Populate form fields
+      setCountry(calc.destination_country)
+      setCurrency(calc.currency)
+      setHsCode(calc.hs_code)
+      setValue(calc.cif_value.toString())
+      setSearchQuery(calc.product_description || '')
+      setSidebarOpen(false)
+      toast.success('Calculation loaded')
+    } catch (error) {
+      console.error('Load failed:', error)
+      toast.error('Failed to load calculation')
     }
   }
 
@@ -329,26 +353,36 @@ function CostCalculator() {
             </span>
           </div>
 
-          {/* Export PDF Button */}
-          <button
-            onClick={handleExportPDF}
-            disabled={isPdfExporting}
-            className="w-full mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-          >
-            {isPdfExporting ? (
-              <>
-                <div className="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                Generating PDF...
-              </>
-            ) : (
-              <>
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-                Export PDF Report
-              </>
-            )}
-          </button>
+          {/* Export Actions */}
+          <div className="flex gap-2 mt-4">
+            <button
+              onClick={handleExportPDF}
+              disabled={isPdfExporting}
+              className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              {isPdfExporting ? (
+                <>
+                  <div className="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  Generating...
+                </>
+              ) : (
+                <>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  Export PDF
+                </>
+              )}
+            </button>
+
+            <button
+              onClick={() => setSaveModalOpen(true)}
+              className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors flex items-center justify-center gap-2"
+            >
+              <Save size={18} />
+              Save Calculation
+            </button>
+          </div>
         </div>
       )}
 
@@ -378,6 +412,29 @@ function CostCalculator() {
           )}
         </div>
       )}
+
+      {/* Floating Saved Calculations Button */}
+      <button
+        onClick={() => setSidebarOpen(!sidebarOpen)}
+        className="fixed bottom-6 right-6 bg-indigo-600 text-white p-4 rounded-full shadow-lg hover:bg-indigo-700 transition-all hover:scale-110 z-40"
+        aria-label="Saved Calculations"
+      >
+        <Bookmark size={24} />
+      </button>
+
+      {/* Saved Calculations Sidebar */}
+      <SavedCalculationsSidebar
+        isOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        onLoadCalculation={loadCalculation}
+      />
+
+      {/* Save Calculation Modal */}
+      <SaveCalculationModal
+        isOpen={saveModalOpen}
+        onClose={() => setSaveModalOpen(false)}
+        calculationData={result}
+      />
     </div>
   )
 }
