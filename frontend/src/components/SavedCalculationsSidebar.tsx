@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Star, Bookmark, Copy, Share2, Trash2, X } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { useQuery, useMutation, useQueryClient } from '@tantml:query'
+import { Star, Bookmark, Copy, Share2, Trash2, X, CheckSquare, Square } from 'lucide-react'
 import {
   getSavedCalculations,
   getFavoriteCalculations,
@@ -27,7 +28,10 @@ export default function SavedCalculationsSidebar({
 }: SavedCalculationsSidebarProps) {
   const [activeTab, setActiveTab] = useState<TabType>('all')
   const [searchQuery, setSearchQuery] = useState('')
+  const [selectionMode, setSelectionMode] = useState(false)
+  const [selectedIds, setSelectedIds] = useState<string[]>([])
   const queryClient = useQueryClient()
+  const navigate = useNavigate()
 
   // Fetch saved calculations
   const { data: savedData, isLoading: savedLoading } = useQuery({
@@ -129,6 +133,31 @@ export default function SavedCalculationsSidebar({
     },
   })
 
+  // Selection handlers
+  const handleToggleSelection = (id: string, checked: boolean) => {
+    if (checked) {
+      if (selectedIds.length < 5) {
+        setSelectedIds([...selectedIds, id])
+      }
+    } else {
+      setSelectedIds(selectedIds.filter(sid => sid !== id))
+    }
+  }
+
+  const handleCompare = () => {
+    if (selectedIds.length >= 2 && selectedIds.length <= 5) {
+      navigate(`/comparison?ids=${selectedIds.join(',')}`)
+      setSelectionMode(false)
+      setSelectedIds([])
+      onClose()
+    }
+  }
+
+  const handleToggleSelectionMode = () => {
+    setSelectionMode(!selectionMode)
+    setSelectedIds([])
+  }
+
   const calculations = activeTab === 'favorites'
     ? favoritesData?.calculations
     : savedData?.calculations
@@ -142,17 +171,46 @@ export default function SavedCalculationsSidebar({
       }`}
     >
       {/* Header */}
-      <div className="bg-indigo-600 text-white p-4 flex items-center justify-between">
-        <h2 className="text-lg font-bold flex items-center gap-2">
-          <Bookmark size={20} />
-          Saved Calculations
-        </h2>
-        <button
-          onClick={onClose}
-          className="p-1 hover:bg-indigo-700 rounded transition-colors"
-        >
-          <X size={20} />
-        </button>
+      <div className="bg-indigo-600 text-white p-4">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-lg font-bold flex items-center gap-2">
+            <Bookmark size={20} />
+            Saved Calculations
+          </h2>
+          <button
+            onClick={onClose}
+            className="p-1 hover:bg-indigo-700 rounded transition-colors"
+          >
+            <X size={20} />
+          </button>
+        </div>
+
+        {/* Selection mode controls */}
+        <div className="flex gap-2">
+          <button
+            onClick={handleToggleSelectionMode}
+            className="flex-1 px-3 py-2 text-sm bg-indigo-700 hover:bg-indigo-800 rounded transition-colors"
+          >
+            {selectionMode ? 'Cancel' : 'Select to Compare'}
+          </button>
+
+          {selectionMode && selectedIds.length >= 2 && selectedIds.length <= 5 && (
+            <button
+              onClick={handleCompare}
+              className="flex-1 px-3 py-2 text-sm bg-green-600 hover:bg-green-700 rounded transition-colors font-semibold"
+            >
+              Compare ({selectedIds.length})
+            </button>
+          )}
+        </div>
+
+        {selectionMode && selectedIds.length > 0 && selectedIds.length < 2 && (
+          <p className="text-xs text-indigo-200 mt-2">Select at least 2 calculations to compare</p>
+        )}
+
+        {selectionMode && selectedIds.length >= 5 && (
+          <p className="text-xs text-indigo-200 mt-2">Maximum 5 calculations selected</p>
+        )}
       </div>
 
       {/* Tabs */}
@@ -215,6 +273,10 @@ export default function SavedCalculationsSidebar({
                 }}
                 onDuplicate={() => duplicateMutation.mutate(calc.id)}
                 onShare={() => shareMutation.mutate(calc.id)}
+                selectionMode={selectionMode}
+                isSelected={selectedIds.includes(calc.id)}
+                onToggleSelection={(checked) => handleToggleSelection(calc.id, checked)}
+                selectionDisabled={!selectedIds.includes(calc.id) && selectedIds.length >= 5}
               />
             ))}
           </div>
@@ -238,6 +300,10 @@ interface CalculationCardProps {
   onDelete: () => void
   onDuplicate: () => void
   onShare: () => void
+  selectionMode: boolean
+  isSelected: boolean
+  onToggleSelection: (checked: boolean) => void
+  selectionDisabled: boolean
 }
 
 function CalculationCard({
@@ -247,15 +313,33 @@ function CalculationCard({
   onDelete,
   onDuplicate,
   onShare,
+  selectionMode,
+  isSelected,
+  onToggleSelection,
+  selectionDisabled,
 }: CalculationCardProps) {
   const [showActions, setShowActions] = useState(false)
 
   return (
-    <div className="p-4 hover:bg-gray-50 transition-colors">
-      <div className="flex items-start justify-between mb-2">
+    <div className={`p-4 transition-colors ${selectionMode ? 'hover:bg-indigo-50' : 'hover:bg-gray-50'}`}>
+      <div className="flex items-start gap-3 mb-2">
+        {/* Checkbox in selection mode */}
+        {selectionMode && (
+          <button
+            onClick={() => onToggleSelection(!isSelected)}
+            disabled={selectionDisabled}
+            className={`mt-1 transition-colors ${
+              selectionDisabled ? 'text-gray-300 cursor-not-allowed' : 'text-indigo-600 hover:text-indigo-700'
+            }`}
+          >
+            {isSelected ? <CheckSquare size={20} /> : <Square size={20} />}
+          </button>
+        )}
+
         <button
-          onClick={onLoad}
+          onClick={selectionMode ? () => onToggleSelection(!isSelected) : onLoad}
           className="flex-1 text-left"
+          disabled={selectionMode && selectionDisabled && !isSelected}
         >
           <h3 className="font-semibold text-gray-900 hover:text-indigo-600 transition-colors">
             {calculation.name || 'Untitled Calculation'}
@@ -269,16 +353,19 @@ function CalculationCard({
             </p>
           )}
         </button>
-        <button
-          onClick={onToggleFavorite}
-          className={`p-1 transition-colors ${
-            calculation.is_favorite
-              ? 'text-yellow-500 hover:text-yellow-600'
-              : 'text-gray-400 hover:text-yellow-500'
-          }`}
-        >
-          <Star size={18} fill={calculation.is_favorite ? 'currentColor' : 'none'} />
-        </button>
+
+        {!selectionMode && (
+          <button
+            onClick={onToggleFavorite}
+            className={`p-1 transition-colors ${
+              calculation.is_favorite
+                ? 'text-yellow-500 hover:text-yellow-600'
+                : 'text-gray-400 hover:text-yellow-500'
+            }`}
+          >
+            <Star size={18} fill={calculation.is_favorite ? 'currentColor' : 'none'} />
+          </button>
+        )}
       </div>
 
       <div className="flex items-center justify-between">
@@ -291,59 +378,61 @@ function CalculationCard({
           </p>
         </div>
 
-        {/* Actions dropdown */}
-        <div className="relative">
-          <button
-            onClick={() => setShowActions(!showActions)}
-            className="p-2 text-gray-600 hover:bg-gray-200 rounded transition-colors"
-          >
-            ⋮
-          </button>
+        {/* Actions dropdown - hidden in selection mode */}
+        {!selectionMode && (
+          <div className="relative">
+            <button
+              onClick={() => setShowActions(!showActions)}
+              className="p-2 text-gray-600 hover:bg-gray-200 rounded transition-colors"
+            >
+              ⋮
+            </button>
 
-          {showActions && (
-            <>
-              {/* Backdrop to close menu */}
-              <div
-                className="fixed inset-0"
-                onClick={() => setShowActions(false)}
-              />
+            {showActions && (
+              <>
+                {/* Backdrop to close menu */}
+                <div
+                  className="fixed inset-0"
+                  onClick={() => setShowActions(false)}
+                />
 
-              {/* Menu */}
-              <div className="absolute right-0 mt-2 w-40 bg-white rounded-lg shadow-lg border z-10">
-                <button
-                  onClick={() => {
-                    onDuplicate()
-                    setShowActions(false)
-                  }}
-                  className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                >
-                  <Copy size={16} />
-                  Duplicate
-                </button>
-                <button
-                  onClick={() => {
-                    onShare()
-                    setShowActions(false)
-                  }}
-                  className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                >
-                  <Share2 size={16} />
-                  Share
-                </button>
-                <button
-                  onClick={() => {
-                    onDelete()
-                    setShowActions(false)
-                  }}
-                  className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50"
-                >
-                  <Trash2 size={16} />
-                  Delete
-                </button>
-              </div>
-            </>
-          )}
-        </div>
+                {/* Menu */}
+                <div className="absolute right-0 mt-2 w-40 bg-white rounded-lg shadow-lg border z-10">
+                  <button
+                    onClick={() => {
+                      onDuplicate()
+                      setShowActions(false)
+                    }}
+                    className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  >
+                    <Copy size={16} />
+                    Duplicate
+                  </button>
+                  <button
+                    onClick={() => {
+                      onShare()
+                      setShowActions(false)
+                    }}
+                    className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  >
+                    <Share2 size={16} />
+                    Share
+                  </button>
+                  <button
+                    onClick={() => {
+                      onDelete()
+                      setShowActions(false)
+                    }}
+                    className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                  >
+                    <Trash2 size={16} />
+                    Delete
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Tags */}

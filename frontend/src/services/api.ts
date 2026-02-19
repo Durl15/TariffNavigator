@@ -303,3 +303,98 @@ export async function createShareLink(
   })
   return response.data
 }
+
+// ============================================================================
+// COMPARISON
+// ============================================================================
+
+// Types
+export interface ComparisonRequest {
+  calculation_ids: string[]
+}
+
+export interface ComparisonMetrics {
+  min_total_cost: number
+  max_total_cost: number
+  avg_total_cost: number
+  cost_spread: number
+  cost_spread_percent: number
+  min_duty_rate?: number
+  max_duty_rate?: number
+  avg_duty_rate?: number
+  best_option_id: string
+  worst_option_id: string
+  has_fta_eligible: boolean
+  total_fta_savings?: number
+  comparison_type: string
+}
+
+export interface ComparisonCalculationItem {
+  id: string
+  name?: string
+  hs_code: string
+  product_description?: string
+  origin_country: string
+  destination_country: string
+  cif_value: number
+  currency: string
+  total_cost: number
+  customs_duty?: number
+  vat_amount?: number
+  fta_eligible: boolean
+  fta_savings?: number
+  result: any
+  created_at: string
+  rank: number
+  cost_vs_average: number
+  cost_vs_average_percent: number
+  is_best: boolean
+  is_worst: boolean
+}
+
+export interface ComparisonResponse {
+  calculations: ComparisonCalculationItem[]
+  metrics: ComparisonMetrics
+  comparison_date: string
+  total_compared: number
+}
+
+// Compare calculations
+export async function compareCalculations(
+  calculationIds: string[]
+): Promise<ComparisonResponse> {
+  const response = await api.post('/comparisons/compare', {
+    calculation_ids: calculationIds
+  }, {
+    headers: {
+      'Authorization': `Bearer ${localStorage.getItem('token')}`,
+    },
+  })
+  return response.data
+}
+
+// Export comparison as PDF
+export async function exportComparisonPDF(calculationIds: string[]): Promise<Blob> {
+  const response = await api.post('/export/comparison/pdf', {
+    calculation_ids: calculationIds
+  }, {
+    responseType: 'blob',
+    headers: {
+      'Authorization': `Bearer ${localStorage.getItem('token')}`,
+    },
+  })
+  return response.data
+}
+
+// Export comparison as CSV
+export async function exportComparisonCSV(calculationIds: string[]): Promise<Blob> {
+  const response = await api.post('/export/comparison/csv', {
+    calculation_ids: calculationIds
+  }, {
+    responseType: 'blob',
+    headers: {
+      'Authorization': `Bearer ${localStorage.getItem('token')}`,
+    },
+  })
+  return response.data
+}

@@ -16,7 +16,9 @@ from app.api.deps import get_current_user
 from app.models.user import User
 from app.models.calculation import Calculation
 from app.services.pdf_generator import generate_tariff_pdf
-from app.services.csv_generator import generate_calculations_csv
+from app.services.csv_generator import generate_calculations_csv, generate_comparison_csv
+from app.schemas.comparison import ComparisonRequest
+from app.api.v1.endpoints.comparisons import compare_calculations
 
 
 router = APIRouter()
@@ -209,4 +211,186 @@ async def test_pdf_generation():
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"PDF generation test failed: {str(e)}"
+        )
+
+
+# ============================================================================
+# COMPARISON EXPORTS
+# ============================================================================
+
+@router.post("/comparison/csv")
+async def export_comparison_csv(
+    request: ComparisonRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Export comparison as CSV with side-by-side layout.
+
+    Args:
+        request: ComparisonRequest with 2-5 calculation IDs
+
+    Returns:
+        CSV file with side-by-side comparison format
+    """
+    try:
+        # Use the comparison endpoint logic to get comparison data
+        comparison_response = await compare_calculations(request, db, current_user)
+
+        # Convert response to dict for CSV generator
+        comparison_data = {
+            'calculations': [
+                {
+                    'id': calc.id,
+                    'name': calc.name,
+                    'rank': calc.rank,
+                    'hs_code': calc.hs_code,
+                    'product_description': calc.product_description,
+                    'origin_country': calc.origin_country,
+                    'destination_country': calc.destination_country,
+                    'cif_value': float(calc.cif_value),
+                    'currency': calc.currency,
+                    'customs_duty': float(calc.customs_duty) if calc.customs_duty else None,
+                    'vat_amount': float(calc.vat_amount) if calc.vat_amount else None,
+                    'total_cost': float(calc.total_cost),
+                    'fta_eligible': calc.fta_eligible,
+                    'fta_savings': float(calc.fta_savings) if calc.fta_savings else None,
+                    'cost_vs_average_percent': calc.cost_vs_average_percent,
+                    'is_best': calc.is_best,
+                    'is_worst': calc.is_worst,
+                }
+                for calc in comparison_response.calculations
+            ],
+            'metrics': {
+                'min_total_cost': float(comparison_response.metrics.min_total_cost),
+                'max_total_cost': float(comparison_response.metrics.max_total_cost),
+                'avg_total_cost': float(comparison_response.metrics.avg_total_cost),
+                'cost_spread': float(comparison_response.metrics.cost_spread),
+                'cost_spread_percent': comparison_response.metrics.cost_spread_percent,
+                'comparison_type': comparison_response.metrics.comparison_type,
+            }
+        }
+
+        # Generate CSV
+        csv_content = generate_comparison_csv(comparison_data)
+
+        # Create filename with timestamp
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"comparison_export_{timestamp}.csv"
+
+        # Return as streaming response
+        return StreamingResponse(
+            iter([csv_content]),
+            media_type="text/csv",
+            headers={
+                "Content-Disposition": f"attachment; filename={filename}",
+                "Content-Type": "text/csv; charset=utf-8"
+            }
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to generate comparison CSV: {str(e)}"
+        )
+
+
+@router.post("/comparison/pdf")
+async def export_comparison_pdf(
+    request: ComparisonRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Export comparison as PDF report.
+
+    Args:
+        request: ComparisonRequest with 2-5 calculation IDs
+
+    Returns:
+        PDF file with comparison report
+    """
+    try:
+        from jinja2 import Environment, FileSystemLoader
+        from weasyprint import HTML
+        import os
+
+        # Use the comparison endpoint logic to get comparison data
+        comparison_response = await compare_calculations(request, db, current_user)
+
+        # Prepare template context
+        comparison_type_display = {
+            'same_hs_different_countries': 'Same HS Code, Different Countries',
+            'different_hs_same_country': 'Different HS Codes, Same Country',
+            'mixed': 'Mixed Comparison'
+        }.get(comparison_response.metrics.comparison_type, comparison_response.metrics.comparison_type)
+
+        fta_count = sum(1 for calc in comparison_response.calculations if calc.fta_eligible)
+
+        context = {
+            'calculations': [
+                {
+                    'id': calc.id,
+                    'name': calc.name,
+                    'rank': calc.rank,
+                    'hs_code': calc.hs_code,
+                    'product_description': calc.product_description,
+                    'origin_country': calc.origin_country,
+                    'destination_country': calc.destination_country,
+                    'cif_value': float(calc.cif_value),
+                    'currency': calc.currency,
+                    'customs_duty': float(calc.customs_duty) if calc.customs_duty else None,
+                    'vat_amount': float(calc.vat_amount) if calc.vat_amount else None,
+                    'total_cost': float(calc.total_cost),
+                    'fta_eligible': calc.fta_eligible,
+                    'fta_savings': float(calc.fta_savings) if calc.fta_savings else None,
+                    'cost_vs_average_percent': calc.cost_vs_average_percent,
+                    'is_best': calc.is_best,
+                    'is_worst': calc.is_worst,
+                }
+                for calc in comparison_response.calculations
+            ],
+            'metrics': {
+                'min_total_cost': float(comparison_response.metrics.min_total_cost),
+                'max_total_cost': float(comparison_response.metrics.max_total_cost),
+                'avg_total_cost': float(comparison_response.metrics.avg_total_cost),
+                'cost_spread': float(comparison_response.metrics.cost_spread),
+                'cost_spread_percent': comparison_response.metrics.cost_spread_percent,
+                'has_fta_eligible': comparison_response.metrics.has_fta_eligible,
+                'total_fta_savings': float(comparison_response.metrics.total_fta_savings) if comparison_response.metrics.total_fta_savings else None,
+            },
+            'comparison_date': comparison_response.comparison_date.strftime('%Y-%m-%d %H:%M:%S'),
+            'total_compared': comparison_response.total_compared,
+            'comparison_type_display': comparison_type_display,
+            'fta_count': fta_count,
+        }
+
+        # Load and render template
+        template_dir = os.path.join(os.path.dirname(__file__), '../../../../templates')
+        env = Environment(loader=FileSystemLoader(template_dir))
+        template = env.get_template('comparison_report.html')
+        html_content = template.render(context)
+
+        # Generate PDF
+        pdf_bytes = HTML(string=html_content).write_pdf()
+
+        # Create filename with timestamp
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"comparison_report_{timestamp}.pdf"
+
+        # Return PDF
+        return StreamingResponse(
+            BytesIO(pdf_bytes),
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": f"attachment; filename={filename}"
+            }
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to generate comparison PDF: {str(e)}"
         )
