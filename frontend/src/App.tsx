@@ -1,5 +1,6 @@
 ﻿import { useState, useEffect } from 'react'
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
+import toast from 'react-hot-toast'
 import './index.css'
 import AdminLayout from './components/AdminLayout'
 import Dashboard from './pages/admin/Dashboard'
@@ -7,6 +8,9 @@ import Users from './pages/admin/Users'
 import Organizations from './pages/admin/Organizations'
 import AuditLogs from './pages/admin/AuditLogs'
 import Login from './pages/Login'
+import UserDashboard from './pages/Dashboard'
+import { exportPDF, downloadBlob } from './services/api'
+import SearchFilters, { type SearchFilterValues } from './components/SearchFilters'
 
 // COST CALCULATOR COMPONENT - With Autocomplete, FTA, and Currency
 function CostCalculator() {
@@ -19,14 +23,23 @@ function CostCalculator() {
   const [error, setError] = useState('')
   const [ftaResult, setFtaResult] = useState(null)
   const [exchangeRate, setExchangeRate] = useState(null)
-  
+  const [isPdfExporting, setIsPdfExporting] = useState(false)
+
   // Autocomplete states
   const [searchQuery, setSearchQuery] = useState('')
   const [suggestions, setSuggestions] = useState([])
   const [showSuggestions, setShowSuggestions] = useState(false)
   const [searchLoading, setSearchLoading] = useState(false)
 
-  // Fetch autocomplete suggestions
+  // Filter states
+  const [searchFilters, setSearchFilters] = useState<SearchFilterValues>({
+    category: null,
+    minRate: null,
+    maxRate: null,
+    sortBy: 'relevance'
+  })
+
+  // Fetch autocomplete suggestions with filters
   const fetchSuggestions = async (query) => {
     if (query.length < 2) {
       setSuggestions([])
@@ -35,7 +48,19 @@ function CostCalculator() {
     setSearchLoading(true)
     try {
       const apiUrl = import.meta.env.VITE_API_URL || 'https://tariffnavigator-backend.onrender.com/api/v1'
-      const response = await fetch(`${apiUrl}/tariff/autocomplete?query=${query}&country=${country}`)
+
+      // Build query params with filters
+      const params = new URLSearchParams({
+        query,
+        country
+      })
+
+      if (searchFilters.category) params.append('category', searchFilters.category)
+      if (searchFilters.minRate !== null) params.append('min_rate', searchFilters.minRate.toString())
+      if (searchFilters.maxRate !== null) params.append('max_rate', searchFilters.maxRate.toString())
+      if (searchFilters.sortBy) params.append('sort_by', searchFilters.sortBy)
+
+      const response = await fetch(`${apiUrl}/tariff/autocomplete?${params.toString()}`)
       const data = await response.json()
       setSuggestions(data)
     } catch (error) {
@@ -44,13 +69,13 @@ function CostCalculator() {
     setSearchLoading(false)
   }
 
-  // Debounce search
+  // Debounce search - refetch when query, country, or filters change
   useEffect(() => {
     const timer = setTimeout(() => {
       fetchSuggestions(searchQuery)
     }, 300)
     return () => clearTimeout(timer)
-  }, [searchQuery, country])
+  }, [searchQuery, country, searchFilters])
 
   const selectSuggestion = (suggestion) => {
     setHsCode(suggestion.code)
@@ -96,6 +121,36 @@ function CostCalculator() {
     setLoading(false)
   }
 
+  const handleExportPDF = async () => {
+    if (!result) return
+
+    setIsPdfExporting(true)
+    try {
+      const pdfData = {
+        hs_code: result.hs_code,
+        country: result.country,
+        description: result.description,
+        rates: result.rates,
+        calculation: result.calculation,
+        origin_country: result.origin_country,
+        destination_country: result.destination_country,
+        original_currency: result.original_currency,
+        exchange_rate: result.exchange_rate,
+        converted_calculation: result.converted_calculation
+      }
+
+      const blob = await exportPDF(pdfData)
+      const timestamp = new Date().toISOString().split('T')[0]
+      downloadBlob(blob, `tariff_report_${result.hs_code}_${timestamp}.pdf`)
+      toast.success('PDF exported successfully!')
+    } catch (error) {
+      console.error('Export failed:', error)
+      toast.error('Failed to export PDF. Please try again.')
+    } finally {
+      setIsPdfExporting(false)
+    }
+  }
+
   const fmt = (val) => new Intl.NumberFormat('en-US', { style: 'currency', currency: currency }).format(val)
   const fmtUSD = (val) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(val)
 
@@ -114,7 +169,19 @@ function CostCalculator() {
   return (
     <div>
       <h2 className="text-xl font-semibold mb-4">Tariff Calculator</h2>
-      
+
+      {/* Search Filters */}
+      <SearchFilters
+        onFilterChange={(filters) => {
+          setSearchFilters(filters)
+          // Trigger new search with updated filters
+          if (searchQuery.length >= 2) {
+            fetchSuggestions(searchQuery)
+          }
+        }}
+        initialFilters={searchFilters}
+      />
+
       <div className="grid grid-cols-1 gap-4 mb-4">
         <div className="grid grid-cols-2 gap-4">
           <div>
@@ -261,6 +328,27 @@ function CostCalculator() {
               {fmt((result.converted_calculation || result.calculation).total_cost)}
             </span>
           </div>
+
+          {/* Export PDF Button */}
+          <button
+            onClick={handleExportPDF}
+            disabled={isPdfExporting}
+            className="w-full mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          >
+            {isPdfExporting ? (
+              <>
+                <div className="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                Generating PDF...
+              </>
+            ) : (
+              <>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                Export PDF Report
+              </>
+            )}
+          </button>
         </div>
       )}
 
@@ -299,7 +387,15 @@ function CalculatorPage() {
   return (
     <div className="min-h-screen bg-gray-50 p-8">
       <div className="max-w-4xl mx-auto">
-        <h1 className="text-3xl font-bold text-blue-600 mb-2">Tariff Navigator</h1>
+        <div className="flex justify-between items-center mb-2">
+          <h1 className="text-3xl font-bold text-blue-600">Tariff Navigator</h1>
+          <a
+            href="/dashboard"
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+          >
+            Dashboard
+          </a>
+        </div>
         <p className="text-gray-600 mb-6">AI-powered tariff calculator with multi-currency support</p>
         <p className="text-xs text-gray-400 mb-4">v2.0.3 - Currency conversion enabled</p>
 
@@ -318,6 +414,9 @@ function App() {
       <Routes>
         {/* Main calculator route */}
         <Route path="/" element={<CalculatorPage />} />
+
+        {/* User dashboard route */}
+        <Route path="/dashboard" element={<UserDashboard />} />
 
         {/* Login route */}
         <Route path="/login" element={<Login />} />
