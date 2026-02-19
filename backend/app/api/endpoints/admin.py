@@ -15,6 +15,7 @@ from app.api.deps import get_current_admin_user, get_current_superuser
 from app.models.user import User
 from app.models.organization import Organization
 from app.models.calculation import Calculation, AuditLog, SharedLink
+from app.models.rate_limit import RateLimitViolation, OrganizationQuotaUsage
 from app.schemas.admin import (
     UserCreate, UserUpdate, UserResponse, UserListResponse,
     OrganizationCreate, OrganizationUpdate, OrganizationResponse,
@@ -23,6 +24,7 @@ from app.schemas.admin import (
     BulkActionRequest, BulkActionResponse
 )
 from app.services.auth import get_password_hash
+from app.services.rate_limiter import RateLimiterService
 
 router = APIRouter()
 
@@ -933,3 +935,200 @@ async def get_popular_hs_codes(
         ))
 
     return popular_codes
+
+
+# ============================================================================
+# RATE LIMITING & QUOTA ANALYTICS ENDPOINTS
+# ============================================================================
+
+@router.get("/rate-limits/violations")
+async def get_rate_limit_violations(
+    hours: int = Query(24, ge=1, le=720, description="Time period in hours"),
+    violation_type: Optional[str] = Query(None, description="Filter by type: ip_rate, user_rate, quota"),
+    limit: int = Query(100, ge=1, le=1000, description="Maximum results"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_admin_user)
+):
+    """
+    Get recent rate limit violations for security monitoring.
+    Requires admin or superuser role.
+
+    Returns list of violations with details about who/what exceeded limits.
+    """
+    rate_limiter = RateLimiterService()
+    violations = await rate_limiter.get_violation_stats(
+        db=db,
+        hours=hours,
+        violation_type=violation_type
+    )
+
+    # Convert to dict format (limit results)
+    results = []
+    for violation in violations[:limit]:
+        results.append({
+            "id": violation.id,
+            "identifier": violation.identifier,
+            "identifier_type": violation.identifier_type,
+            "user_id": violation.user_id,
+            "violation_type": violation.violation_type,
+            "attempted_count": violation.attempted_count,
+            "limit": violation.limit,
+            "endpoint": violation.endpoint,
+            "created_at": violation.created_at.isoformat() if violation.created_at else None
+        })
+
+    return {
+        "total": len(violations),
+        "showing": len(results),
+        "time_period_hours": hours,
+        "violation_type_filter": violation_type,
+        "violations": results
+    }
+
+
+@router.get("/rate-limits/top-violators")
+async def get_top_violators(
+    days: int = Query(7, ge=1, le=90, description="Time period in days"),
+    limit: int = Query(20, ge=1, le=100, description="Maximum results"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_admin_user)
+):
+    """
+    Get top rate limit violators by identifier.
+    Useful for identifying abusive IPs or users.
+    Requires admin or superuser role.
+    """
+    rate_limiter = RateLimiterService()
+    top_violators = await rate_limiter.get_top_violators(
+        db=db,
+        days=days,
+        limit=limit
+    )
+
+    results = []
+    for identifier, identifier_type, count in top_violators:
+        results.append({
+            "identifier": identifier,
+            "identifier_type": identifier_type,
+            "violation_count": count
+        })
+
+    return {
+        "time_period_days": days,
+        "total_violators": len(results),
+        "violators": results
+    }
+
+
+@router.get("/quotas/usage")
+async def get_quota_usage(
+    organization_id: Optional[str] = Query(None, description="Filter by specific organization"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_admin_user)
+):
+    """
+    Get organization quota usage statistics.
+    Shows how close organizations are to their monthly limits.
+    Requires admin or superuser role.
+    """
+    # Build query
+    current_month = datetime.utcnow().strftime("%Y-%m")
+    query = select(OrganizationQuotaUsage, Organization).join(
+        Organization,
+        OrganizationQuotaUsage.organization_id == Organization.id
+    ).where(
+        OrganizationQuotaUsage.year_month == current_month
+    )
+
+    # Filter by organization if specified
+    if organization_id:
+        query = query.where(OrganizationQuotaUsage.organization_id == organization_id)
+
+    # Execute query
+    result = await db.execute(query)
+    quota_data = result.all()
+
+    # Format response
+    quotas = []
+    for quota_usage, organization in quota_data:
+        quotas.append({
+            "organization_id": organization.id,
+            "organization_name": organization.name,
+            "plan": organization.plan,
+            "year_month": quota_usage.year_month,
+            "calculation_count": quota_usage.calculation_count,
+            "quota_limit": quota_usage.quota_limit,
+            "percentage_used": round((quota_usage.calculation_count / quota_usage.quota_limit * 100), 2) if quota_usage.quota_limit > 0 else 0,
+            "remaining": max(0, quota_usage.quota_limit - quota_usage.calculation_count),
+            "is_exceeded": quota_usage.calculation_count >= quota_usage.quota_limit
+        })
+
+    # Sort by percentage used (highest first)
+    quotas.sort(key=lambda x: x["percentage_used"], reverse=True)
+
+    return {
+        "current_month": current_month,
+        "total_organizations": len(quotas),
+        "organizations_at_limit": sum(1 for q in quotas if q["is_exceeded"]),
+        "organizations_over_80_percent": sum(1 for q in quotas if q["percentage_used"] >= 80 and not q["is_exceeded"]),
+        "quotas": quotas
+    }
+
+
+@router.post("/quotas/{org_id}/reset")
+async def reset_organization_quota(
+    org_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_superuser)
+):
+    """
+    Reset an organization's monthly quota (emergency use).
+    Requires superuser role.
+
+    WARNING: This should only be used in exceptional circumstances.
+    """
+    # Get organization
+    org = await db.get(Organization, org_id)
+    if not org:
+        raise HTTPException(status_code=404, detail="Organization not found")
+
+    # Get current month quota
+    current_month = datetime.utcnow().strftime("%Y-%m")
+    stmt = select(OrganizationQuotaUsage).where(
+        and_(
+            OrganizationQuotaUsage.organization_id == org_id,
+            OrganizationQuotaUsage.year_month == current_month
+        )
+    )
+    result = await db.execute(stmt)
+    quota_usage = result.scalar_one_or_none()
+
+    if not quota_usage:
+        raise HTTPException(status_code=404, detail="No quota record found for current month")
+
+    # Reset quota
+    old_count = quota_usage.calculation_count
+    quota_usage.calculation_count = 0
+    quota_usage.updated_at = datetime.utcnow()
+    await db.commit()
+
+    # Log action in audit log
+    audit_log = AuditLog(
+        user_id=current_user.id,
+        action="quota_reset",
+        resource_type="organization_quota",
+        resource_id=org_id
+    )
+    db.add(audit_log)
+    await db.commit()
+
+    return {
+        "message": "Quota reset successfully",
+        "organization_id": org_id,
+        "organization_name": org.name,
+        "year_month": current_month,
+        "previous_count": old_count,
+        "new_count": 0,
+        "quota_limit": quota_usage.quota_limit,
+        "reset_by": current_user.email
+    }

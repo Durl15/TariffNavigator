@@ -1,4 +1,5 @@
 from sqlalchemy import Column, String, Integer, Boolean, DateTime, JSON
+from sqlalchemy.orm import relationship
 from datetime import datetime
 import uuid
 from app.db.base_class import Base
@@ -19,6 +20,9 @@ class Organization(Base):
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime(timezone=True), onupdate=datetime.utcnow, nullable=True)
     deleted_at = Column(DateTime(timezone=True), nullable=True)  # Soft delete
+
+    # Relationships
+    quota_usage = relationship("OrganizationQuotaUsage", back_populates="organization", cascade="all, delete-orphan")
 
     def __repr__(self):
         return f"<Organization {self.name} ({self.plan})>"
