@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useQuery, useMutation, useQueryClient } from '@tantml:query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Star, Bookmark, Copy, Share2, Trash2, X, CheckSquare, Square } from 'lucide-react'
 import {
   getSavedCalculations,

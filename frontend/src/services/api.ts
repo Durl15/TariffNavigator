@@ -57,6 +57,41 @@ export interface CSVExportFilters {
   limit?: number
 }
 
+// FTA Wizard Types
+export interface FTACheckResult {
+  is_eligible: boolean
+  fta_name: string | null
+  standard_rate: number
+  preferential_rate: number
+  savings_percent: number
+}
+
+export interface WizardState {
+  currentStep: 1 | 2 | 3 | 4
+  hsCode: string
+  hsDescription: string
+  originCountry: string
+  destinationCountry: string
+  ftaCheckResult: FTACheckResult | null
+  ftaEligible: boolean
+  ftaName: string | null
+  standardRate: number
+  preferentialRate: number
+  cifValue: number
+  savings: number
+  savingsPercent: number
+  standardCalculation: {
+    cifValue: number
+    duty: number
+    totalCost: number
+  } | null
+  ftaCalculation: {
+    cifValue: number
+    duty: number
+    totalCost: number
+  } | null
+}
+
 // Public Stats
 export async function getPublicStats(): Promise<PublicStats> {
   const response = await api.get('/stats/public')
@@ -100,6 +135,26 @@ export function downloadBlob(blob: Blob, filename: string) {
   link.click()
   document.body.removeChild(link)
   URL.revokeObjectURL(url)
+}
+
+// FTA Check
+export async function checkFTAEligibility(
+  hsCode: string,
+  originCountry: string,
+  destCountry: string
+): Promise<FTACheckResult> {
+  const params = new URLSearchParams({
+    hs_code: hsCode,
+    origin_country: originCountry,
+    dest_country: destCountry
+  })
+
+  const response = await api.get(`/tariff/fta-check?${params.toString()}`, {
+    headers: {
+      'Authorization': `Bearer ${localStorage.getItem('token')}`
+    }
+  })
+  return response.data
 }
 
 // ============================================================================

@@ -10,6 +10,7 @@ import AuditLogs from './pages/admin/AuditLogs'
 import Login from './pages/Login'
 import UserDashboard from './pages/Dashboard'
 import ComparisonPage from './pages/ComparisonPage'
+import FTAWizardPage from './pages/FTAWizardPage'
 import { exportPDF, downloadBlob, getCalculation } from './services/api'
 import SearchFilters, { type SearchFilterValues } from './components/SearchFilters'
 import SavedCalculationsSidebar from './components/SavedCalculationsSidebar'
@@ -478,6 +479,9 @@ function App() {
 
         {/* Comparison route */}
         <Route path="/comparison" element={<ComparisonPage />} />
+
+        {/* FTA Wizard route */}
+        <Route path="/fta-wizard" element={<FTAWizardPage />} />
 
         {/* Login route */}
         <Route path="/login" element={<Login />} />
