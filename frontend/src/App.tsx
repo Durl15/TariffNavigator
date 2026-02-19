@@ -9,6 +9,7 @@ import Organizations from './pages/admin/Organizations'
 import AuditLogs from './pages/admin/AuditLogs'
 import Login from './pages/Login'
 import UserDashboard from './pages/Dashboard'
+import ComparisonPage from './pages/ComparisonPage'
 import { exportPDF, downloadBlob, getCalculation } from './services/api'
 import SearchFilters, { type SearchFilterValues } from './components/SearchFilters'
 import SavedCalculationsSidebar from './components/SavedCalculationsSidebar'
@@ -474,6 +475,9 @@ function App() {
 
         {/* User dashboard route */}
         <Route path="/dashboard" element={<UserDashboard />} />
+
+        {/* Comparison route */}
+        <Route path="/comparison" element={<ComparisonPage />} />
 
         {/* Login route */}
         <Route path="/login" element={<Login />} />

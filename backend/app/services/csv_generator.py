@@ -136,3 +136,148 @@ def generate_audit_logs_csv(logs: List[Dict[str, Any]]) -> str:
     output.close()
 
     return csv_content
+
+
+def generate_comparison_csv(comparison_data: Dict[str, Any]) -> str:
+    """
+    Generate CSV file content for calculation comparison.
+    Uses side-by-side format with calculations as columns.
+
+    Args:
+        comparison_data: Comparison response dictionary with 'calculations' and 'metrics'
+
+    Returns:
+        CSV content as string with side-by-side comparison layout
+    """
+    output = StringIO()
+
+    calculations = comparison_data.get('calculations', [])
+    metrics = comparison_data.get('metrics', {})
+
+    if not calculations:
+        return ""
+
+    # Header row: Metric | Calc 1 | Calc 2 | Calc 3...
+    fieldnames = ['Metric'] + [
+        f"#{calc['rank']}: {calc.get('name') or 'Calculation ' + str(i+1)}"
+        for i, calc in enumerate(calculations)
+    ]
+
+    writer = csv.DictWriter(output, fieldnames=fieldnames, quoting=csv.QUOTE_MINIMAL)
+    writer.writeheader()
+
+    # Helper to build row
+    def build_row(metric_name: str, values: List[str]) -> Dict[str, str]:
+        row = {'Metric': metric_name}
+        for i, calc in enumerate(calculations):
+            col_name = f"#{calc['rank']}: {calc.get('name') or 'Calculation ' + str(i+1)}"
+            row[col_name] = values[i] if i < len(values) else 'N/A'
+        return row
+
+    # Comparison type row
+    comparison_type = metrics.get('comparison_type', 'mixed')
+    type_display = {
+        'same_hs_different_countries': 'Same HS Code, Different Countries',
+        'different_hs_same_country': 'Different HS Codes, Same Country',
+        'mixed': 'Mixed Comparison'
+    }.get(comparison_type, comparison_type)
+
+    writer.writerow(build_row('Comparison Type', [type_display] * len(calculations)))
+    writer.writerow(build_row('', [''] * len(calculations)))  # Blank row
+
+    # HS Code
+    writer.writerow(build_row(
+        'HS Code',
+        [calc.get('hs_code', 'N/A') for calc in calculations]
+    ))
+
+    # Route
+    writer.writerow(build_row(
+        'Route',
+        [f"{calc.get('origin_country', '')} → {calc.get('destination_country', '')}"
+         for calc in calculations]
+    ))
+
+    # Product Description
+    writer.writerow(build_row(
+        'Product',
+        [calc.get('product_description', 'N/A') for calc in calculations]
+    ))
+
+    writer.writerow(build_row('', [''] * len(calculations)))  # Blank row
+
+    # CIF Value
+    writer.writerow(build_row(
+        'CIF Value',
+        [f"{calc.get('currency', 'USD')} {calc.get('cif_value', 0):,.2f}"
+         for calc in calculations]
+    ))
+
+    # Customs Duty
+    writer.writerow(build_row(
+        'Customs Duty',
+        [f"{calc.get('currency', 'USD')} {calc.get('customs_duty', 0):,.2f}"
+         if calc.get('customs_duty') is not None else 'N/A'
+         for calc in calculations]
+    ))
+
+    # VAT
+    writer.writerow(build_row(
+        'VAT',
+        [f"{calc.get('currency', 'USD')} {calc.get('vat_amount', 0):,.2f}"
+         if calc.get('vat_amount') is not None else 'N/A'
+         for calc in calculations]
+    ))
+
+    # Total Cost (highlighted)
+    writer.writerow(build_row(
+        'TOTAL COST',
+        [f"{calc.get('currency', 'USD')} {calc.get('total_cost', 0):,.2f}"
+         for calc in calculations]
+    ))
+
+    writer.writerow(build_row('', [''] * len(calculations)))  # Blank row
+
+    # Rank
+    writer.writerow(build_row(
+        'Rank',
+        [f"#{calc.get('rank', 0)}" +
+         (' (Best)' if calc.get('is_best') else ' (Worst)' if calc.get('is_worst') else '')
+         for calc in calculations]
+    ))
+
+    # vs Average
+    writer.writerow(build_row(
+        'vs Average',
+        [f"{calc.get('cost_vs_average_percent', 0):+.1f}%"
+         for calc in calculations]
+    ))
+
+    # FTA Eligible
+    writer.writerow(build_row(
+        'FTA Eligible',
+        ['Yes' if calc.get('fta_eligible') else 'No'
+         for calc in calculations]
+    ))
+
+    # FTA Savings
+    writer.writerow(build_row(
+        'FTA Savings',
+        [f"{calc.get('currency', 'USD')} {calc.get('fta_savings', 0):,.2f}"
+         if calc.get('fta_savings') else 'N/A'
+         for calc in calculations]
+    ))
+
+    writer.writerow(build_row('', [''] * len(calculations)))  # Blank row
+
+    # Summary metrics
+    writer.writerow(build_row('SUMMARY METRICS', [''] * len(calculations)))
+    writer.writerow(build_row('Best Option Cost', [f"${metrics.get('min_total_cost', 0):,.2f}"] * len(calculations)))
+    writer.writerow(build_row('Worst Option Cost', [f"${metrics.get('max_total_cost', 0):,.2f}"] * len(calculations)))
+    writer.writerow(build_row('Average Cost', [f"${metrics.get('avg_total_cost', 0):,.2f}"] * len(calculations)))
+    writer.writerow(build_row('Cost Spread', [f"${metrics.get('cost_spread', 0):,.2f} ({metrics.get('cost_spread_percent', 0):.1f}%)"] * len(calculations)))
+
+    csv_content = output.getvalue()
+    output.close()
+
+    return csv_content
