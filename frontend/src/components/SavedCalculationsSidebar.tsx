@@ -206,7 +206,7 @@ export default function SavedCalculationsSidebar({
                 calculation={calc}
                 onLoad={() => onLoadCalculation(calc.id)}
                 onToggleFavorite={() =>
-                  favoriteMutation.mutate({ id: calc.id, is_favorite: !calc.is_favorite })
+                  favoriteMutation.mutate({ id: calc.id, isFavorite: !calc.is_favorite })
                 }
                 onDelete={() => {
                   if (confirm('Are you sure you want to delete this calculation?')) {
