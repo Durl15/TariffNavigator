@@ -50,25 +50,59 @@ class CalculateRequest(BaseModel):
 async def search_tariff(
     code: str = Query(..., description="HS code to search"),
     country: str = Query(..., description="Country code (CN, EU, US)"),
+    category: Optional[str] = Query(None, description="Filter by category"),
+    min_rate: Optional[float] = Query(None, ge=0, le=100, description="Minimum duty rate"),
+    max_rate: Optional[float] = Query(None, ge=0, le=100, description="Maximum duty rate"),
+    sort_by: Optional[str] = Query("relevance", description="Sort order: relevance, rate_asc, rate_desc, code"),
+    limit: int = Query(10, ge=1, le=100, description="Maximum results"),
     db: AsyncSession = Depends(get_db)
 ):
-    """Search for HS codes by prefix"""
+    """Search for HS codes by prefix with enhanced filtering and sorting"""
     clean_code = code.replace(".", "").replace(" ", "")
-    
-    result = await db.execute(
-        select(HSCode).where(
-            HSCode.country == country.upper(),
-            HSCode.code.like(f"{clean_code}%")
-        ).limit(10)
+
+    # Build query with filters
+    query = select(HSCode).where(
+        HSCode.country == country.upper(),
+        HSCode.code.like(f"{clean_code}%")
     )
+
+    # Apply category filter (if category column exists)
+    if category:
+        query = query.where(HSCode.category == category)
+
+    # Apply duty rate range filters
+    if min_rate is not None:
+        query = query.where(HSCode.mfn_rate >= min_rate)
+
+    if max_rate is not None:
+        query = query.where(HSCode.mfn_rate <= max_rate)
+
+    # Apply sorting
+    if sort_by == "rate_asc":
+        query = query.order_by(HSCode.mfn_rate.asc())
+    elif sort_by == "rate_desc":
+        query = query.order_by(HSCode.mfn_rate.desc())
+    elif sort_by == "code":
+        query = query.order_by(HSCode.code.asc())
+    else:  # relevance (default) - exact matches first, then by code
+        query = query.order_by(HSCode.code.asc())
+
+    # Apply limit
+    query = query.limit(limit)
+
+    result = await db.execute(query)
     codes = result.scalars().all()
-    
+
     if not codes:
         raise HTTPException(status_code=404, detail="No HS codes found")
-    
+
     return {
         "query": code,
         "country": country,
+        "category": category,
+        "min_rate": min_rate,
+        "max_rate": max_rate,
+        "sort_by": sort_by,
         "results": [c.to_dict() for c in codes]
     }
 
