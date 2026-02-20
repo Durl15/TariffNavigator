@@ -15,21 +15,19 @@ allowed_origins = [
 
 # Add localhost for development
 if settings.ENVIRONMENT == "development":
-    allowed_origins.extend([
-        "http://localhost:3000",
-        "http://localhost:3003",
-        "http://localhost:5173",
-        "http://127.0.0.1:3000",
-        "http://127.0.0.1:3003",
-        "http://127.0.0.1:5173",
-    ])
+    # Add all common localhost ports
+    for port in range(3000, 3020):  # Ports 3000-3019
+        allowed_origins.append(f"http://localhost:{port}")
+        allowed_origins.append(f"http://127.0.0.1:{port}")
+    allowed_origins.append("http://localhost:5173")
+    allowed_origins.append("http://localhost:8080")
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH"],
-    allow_headers=["Content-Type", "Authorization", "Accept"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+    allow_headers=["*"],
 )
 
 # Add rate limiting middleware (AFTER CORS, BEFORE routes)
