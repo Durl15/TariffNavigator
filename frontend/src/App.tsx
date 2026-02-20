@@ -11,6 +11,8 @@ import Login from './pages/Login'
 import UserDashboard from './pages/Dashboard'
 import ComparisonPage from './pages/ComparisonPage'
 import FTAWizardPage from './pages/FTAWizardPage'
+import CatalogsPage from './pages/CatalogsPage'
+import CatalogImpactPage from './pages/CatalogImpactPage'
 import { exportPDF, downloadBlob, getCalculation } from './services/api'
 import SearchFilters, { type SearchFilterValues } from './components/SearchFilters'
 import SavedCalculationsSidebar from './components/SavedCalculationsSidebar'
@@ -482,6 +484,10 @@ function App() {
 
         {/* FTA Wizard route */}
         <Route path="/fta-wizard" element={<FTAWizardPage />} />
+
+        {/* Catalog routes */}
+        <Route path="/catalogs" element={<CatalogsPage />} />
+        <Route path="/catalogs/:catalogId/impact" element={<CatalogImpactPage />} />
 
         {/* Login route */}
         <Route path="/login" element={<Login />} />

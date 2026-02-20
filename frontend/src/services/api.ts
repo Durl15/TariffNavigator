@@ -453,3 +453,234 @@ export async function exportComparisonCSV(calculationIds: string[]): Promise<Blo
   })
   return response.data
 }
+
+// ============================================================================
+// CATALOGS
+// ============================================================================
+
+// Types
+export interface Catalog {
+  id: string
+  user_id: string
+  organization_id?: string
+  name: string
+  description?: string
+  currency: string
+  total_skus: number
+  uploaded_at: string
+  created_at: string
+  updated_at?: string
+}
+
+export interface CatalogListItem {
+  id: string
+  name: string
+  description?: string
+  total_skus: number
+  uploaded_at: string
+  created_at: string
+}
+
+export interface CatalogListResponse {
+  catalogs: CatalogListItem[]
+  total: number
+  page: number
+  page_size: number
+  total_pages: number
+}
+
+export interface CatalogItem {
+  id: string
+  catalog_id: string
+  sku: string
+  product_name?: string
+  hs_code?: string
+  origin_country: string
+  cogs: number
+  retail_price: number
+  annual_volume: number
+  category?: string
+  weight_kg?: number
+  notes?: string
+  tariff_cost?: number
+  landed_cost?: number
+  gross_margin?: number
+  margin_percent?: number
+  annual_tariff_exposure?: number
+  created_at: string
+  updated_at?: string
+}
+
+export interface CatalogItemsResponse {
+  items: CatalogItem[]
+  total: number
+  page: number
+  page_size: number
+  total_pages: number
+}
+
+export interface UploadError {
+  row: number
+  sku: string
+  error: string
+}
+
+export interface CatalogUploadResponse {
+  catalog_id: string
+  name: string
+  total_skus: number
+  success_count: number
+  error_count: number
+  errors: UploadError[]
+}
+
+export interface CategoryMetrics {
+  category: string
+  total_tariff: number
+  total_revenue: number
+  avg_margin: number
+  item_count: number
+}
+
+export interface OriginMetrics {
+  origin_country: string
+  total_tariff: number
+  total_revenue: number
+  avg_margin: number
+  item_count: number
+}
+
+export interface PortfolioMetrics {
+  total_tariff_exposure: number
+  total_revenue: number
+  total_landed_cost: number
+  avg_margin_percent: number
+  total_items: number
+  negative_margin_count: number
+  zero_tariff_count: number
+  by_category: CategoryMetrics[]
+  by_origin: OriginMetrics[]
+}
+
+export interface CatalogImpactResponse {
+  catalog_id: string
+  catalog_name: string
+  destination_country: string
+  portfolio_metrics: PortfolioMetrics
+  items: CatalogItem[]
+  calculation_date: string
+}
+
+// Upload catalog
+export async function uploadCatalog(
+  file: File,
+  name: string,
+  description?: string
+): Promise<CatalogUploadResponse> {
+  const formData = new FormData()
+  formData.append('file', file)
+  formData.append('name', name)
+  if (description) {
+    formData.append('description', description)
+  }
+
+  const response = await api.post('/catalogs/upload', formData, {
+    headers: {
+      'Authorization': `Bearer ${localStorage.getItem('token')}`,
+      'Content-Type': 'multipart/form-data',
+    },
+  })
+  return response.data
+}
+
+// Get catalogs list
+export async function getCatalogs(
+  page: number = 1,
+  pageSize: number = 20,
+  sortBy: 'created_at' | 'name' | 'total_skus' = 'created_at',
+  sortOrder: 'asc' | 'desc' = 'desc'
+): Promise<CatalogListResponse> {
+  const params = new URLSearchParams({
+    page: page.toString(),
+    page_size: pageSize.toString(),
+    sort_by: sortBy,
+    sort_order: sortOrder,
+  })
+
+  const response = await api.get(`/catalogs?${params.toString()}`, {
+    headers: {
+      'Authorization': `Bearer ${localStorage.getItem('token')}`,
+    },
+  })
+  return response.data
+}
+
+// Get single catalog
+export async function getCatalog(id: string): Promise<Catalog> {
+  const response = await api.get(`/catalogs/${id}`, {
+    headers: {
+      'Authorization': `Bearer ${localStorage.getItem('token')}`,
+    },
+  })
+  return response.data
+}
+
+// Get catalog items
+export async function getCatalogItems(
+  catalogId: string,
+  page: number = 1,
+  pageSize: number = 50
+): Promise<CatalogItemsResponse> {
+  const params = new URLSearchParams({
+    page: page.toString(),
+    page_size: pageSize.toString(),
+  })
+
+  const response = await api.get(`/catalogs/${catalogId}/items?${params.toString()}`, {
+    headers: {
+      'Authorization': `Bearer ${localStorage.getItem('token')}`,
+    },
+  })
+  return response.data
+}
+
+// Get catalog impact analysis
+export async function getCatalogImpact(
+  catalogId: string,
+  destinationCountry: string,
+  recalculate: boolean = false
+): Promise<CatalogImpactResponse> {
+  const params = new URLSearchParams({
+    destination_country: destinationCountry,
+    recalculate: recalculate.toString(),
+  })
+
+  const response = await api.get(`/catalogs/${catalogId}/impact?${params.toString()}`, {
+    headers: {
+      'Authorization': `Bearer ${localStorage.getItem('token')}`,
+    },
+  })
+  return response.data
+}
+
+// Update catalog
+export async function updateCatalog(
+  id: string,
+  data: { name?: string; description?: string }
+): Promise<Catalog> {
+  const response = await api.put(`/catalogs/${id}`, data, {
+    headers: {
+      'Authorization': `Bearer ${localStorage.getItem('token')}`,
+    },
+  })
+  return response.data
+}
+
+// Delete catalog
+export async function deleteCatalog(id: string): Promise<void> {
+  await api.delete(`/catalogs/${id}`, {
+    headers: {
+      'Authorization': `Bearer ${localStorage.getItem('token')}`,
+    },
+  })
+}

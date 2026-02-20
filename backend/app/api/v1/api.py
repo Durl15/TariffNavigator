@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.api.v1.endpoints import tariff, export, stats, calculations, comparisons
+from app.api.v1.endpoints import tariff, export, stats, calculations, comparisons, catalogs
 from app.api.endpoints import auth, admin
 
 api_router = APIRouter()
@@ -10,3 +10,4 @@ api_router.include_router(export.router, prefix="/export", tags=["export"])
 api_router.include_router(stats.router, prefix="/stats", tags=["stats"])
 api_router.include_router(calculations.router, prefix="/calculations", tags=["calculations"])
 api_router.include_router(comparisons.router, prefix="/comparisons", tags=["comparisons"])
+api_router.include_router(catalogs.router, prefix="/catalogs", tags=["catalogs"])

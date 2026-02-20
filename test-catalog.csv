@@ -1,0 +1,11 @@
+sku,product_name,hs_code,origin_country,cogs,retail_price,annual_volume,category,notes
+TEST-001,Widget A,8517130000,CN,25.00,49.99,10000,Electronics,Smartphones duty-free
+TEST-002,Widget B,8703230010,JP,150.00,299.99,5000,Automotive,Cars with RCEP benefits
+TEST-003,Widget C,8471300000,KR,80.00,149.99,8000,Electronics,Laptops duty-free
+TEST-004,Gadget D,8517130000,MX,30.00,59.99,12000,Electronics,Smartphones from Mexico
+TEST-005,Device E,8703230010,CN,200.00,399.99,3000,Automotive,Cars 1500-3000cc
+TEST-006,Component F,8703240010,JP,300.00,599.99,2000,Automotive,Cars >3000cc
+TEST-007,Part G,8517130000,CN,15.00,29.99,20000,Electronics,Mobile accessories
+TEST-008,Tool H,8703230090,JP,175.00,349.99,4000,Automotive,Other cars 1500-3000cc
+TEST-009,Item I,8471300000,JP,90.00,179.99,6000,Electronics,High-end laptops
+TEST-010,Product J,8703230010,KR,180.00,359.99,5500,Automotive,Korean cars
