@@ -30,7 +30,7 @@ const Login: React.FC = () => {
       }
 
       const data = await response.json();
-      localStorage.setItem('auth_token', data.access_token);
+      localStorage.setItem('token', data.access_token);
       navigate('/admin');
     } catch (err: any) {
       setError(err.message || 'An error occurred during login');
