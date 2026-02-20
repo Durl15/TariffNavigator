@@ -496,17 +496,17 @@ export interface CatalogItem {
   product_name?: string
   hs_code?: string
   origin_country: string
-  cogs: number
-  retail_price: number
+  cogs: number | string  // Can be string from backend Decimal serialization
+  retail_price: number | string
   annual_volume: number
   category?: string
-  weight_kg?: number
+  weight_kg?: number | string
   notes?: string
-  tariff_cost?: number
-  landed_cost?: number
-  gross_margin?: number
-  margin_percent?: number
-  annual_tariff_exposure?: number
+  tariff_cost?: number | string
+  landed_cost?: number | string
+  gross_margin?: number | string
+  margin_percent?: number | string
+  annual_tariff_exposure?: number | string
   created_at: string
   updated_at?: string
 }
