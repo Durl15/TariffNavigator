@@ -49,7 +49,14 @@ TIER_SKU_LIMITS = {
 
 async def check_sku_limit(user: User, db: AsyncSession, sku_count: int):
     """Check if user has exceeded their SKU limit"""
-    tier = user.subscription_tier or 'free'
+    # Map role to tier (role is used instead of subscription_tier)
+    role_to_tier = {
+        'viewer': 'free',
+        'user': 'free',
+        'admin': 'enterprise',
+        'superadmin': 'enterprise'
+    }
+    tier = role_to_tier.get(user.role, 'free')
     limit = TIER_SKU_LIMITS.get(tier, 1000)
 
     if sku_count > limit:

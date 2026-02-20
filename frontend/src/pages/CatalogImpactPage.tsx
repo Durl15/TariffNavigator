@@ -248,18 +248,18 @@ export default function CatalogImpactPage() {
                     {item.origin_country}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">
-                    ${item.cogs.toFixed(2)}
+                    ${Number(item.cogs).toFixed(2)}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-red-600">
-                    ${(item.tariff_cost || 0).toFixed(2)}
+                    ${Number(item.tariff_cost || 0).toFixed(2)}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">
-                    ${(item.landed_cost || 0).toFixed(2)}
+                    ${Number(item.landed_cost || 0).toFixed(2)}
                   </td>
                   <td className={`px-6 py-4 whitespace-nowrap text-sm text-right font-medium ${
-                    (item.margin_percent || 0) < 0 ? 'text-red-600' : 'text-green-600'
+                    Number(item.margin_percent || 0) < 0 ? 'text-red-600' : 'text-green-600'
                   }`}>
-                    {(item.margin_percent || 0).toFixed(1)}%
+                    {Number(item.margin_percent || 0).toFixed(1)}%
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">
                     ${(item.annual_tariff_exposure || 0).toLocaleString()}
