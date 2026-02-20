@@ -684,3 +684,207 @@ export async function deleteCatalog(id: string): Promise<void> {
     },
   })
 }
+
+// ============================================================================
+// NOTIFICATIONS & WATCHLISTS (Module 2)
+// ============================================================================
+
+// Notification Types
+export interface Notification {
+  id: string
+  type: string
+  title: string
+  message: string
+  link?: string
+  data?: Record<string, any>
+  is_read: boolean
+  read_at?: string
+  created_at: string
+}
+
+export interface NotificationListResponse {
+  notifications: Notification[]
+  total: number
+  page: number
+  page_size: number
+  unread_count?: number
+}
+
+export interface UnreadCountResponse {
+  count: number
+}
+
+// Watchlist Types
+export interface Watchlist {
+  id: string
+  name: string
+  description?: string
+  hs_codes: string[]
+  countries: string[]
+  alert_preferences?: Record<string, any>
+  is_active: boolean
+  created_at: string
+  updated_at?: string
+}
+
+export interface WatchlistCreate {
+  name: string
+  description?: string
+  hs_codes: string[]
+  countries: string[]
+  alert_preferences?: Record<string, any>
+}
+
+export interface WatchlistUpdate {
+  name?: string
+  description?: string
+  hs_codes?: string[]
+  countries?: string[]
+  alert_preferences?: Record<string, any>
+  is_active?: boolean
+}
+
+export interface WatchlistListResponse {
+  watchlists: Watchlist[]
+  total: number
+  page: number
+  page_size: number
+}
+
+// Notification API Functions
+
+// Get notifications list
+export async function getNotifications(
+  page: number = 1,
+  pageSize: number = 20,
+  unreadOnly: boolean = false,
+  notificationType?: string
+): Promise<NotificationListResponse> {
+  const params = new URLSearchParams({
+    page: page.toString(),
+    page_size: pageSize.toString(),
+    unread_only: unreadOnly.toString(),
+  })
+
+  if (notificationType) {
+    params.append('notification_type', notificationType)
+  }
+
+  const response = await api.get(`/notifications?${params.toString()}`, {
+    headers: {
+      'Authorization': `Bearer ${localStorage.getItem('token')}`,
+    },
+  })
+  return response.data
+}
+
+// Get unread notification count
+export async function getUnreadCount(): Promise<UnreadCountResponse> {
+  const response = await api.get('/notifications/unread', {
+    headers: {
+      'Authorization': `Bearer ${localStorage.getItem('token')}`,
+    },
+  })
+  return response.data
+}
+
+// Mark notification as read
+export async function markAsRead(notificationId: string): Promise<void> {
+  await api.put(`/notifications/${notificationId}/read`, {}, {
+    headers: {
+      'Authorization': `Bearer ${localStorage.getItem('token')}`,
+    },
+  })
+}
+
+// Mark all notifications as read
+export async function markAllAsRead(): Promise<void> {
+  await api.put('/notifications/read-all', {}, {
+    headers: {
+      'Authorization': `Bearer ${localStorage.getItem('token')}`,
+    },
+  })
+}
+
+// Delete notification
+export async function deleteNotification(notificationId: string): Promise<void> {
+  await api.delete(`/notifications/${notificationId}`, {
+    headers: {
+      'Authorization': `Bearer ${localStorage.getItem('token')}`,
+    },
+  })
+}
+
+// Watchlist API Functions
+
+// Get watchlists
+export async function getWatchlists(
+  page: number = 1,
+  pageSize: number = 20,
+  activeOnly: boolean = false
+): Promise<WatchlistListResponse> {
+  const params = new URLSearchParams({
+    page: page.toString(),
+    page_size: pageSize.toString(),
+    active_only: activeOnly.toString(),
+  })
+
+  const response = await api.get(`/watchlists?${params.toString()}`, {
+    headers: {
+      'Authorization': `Bearer ${localStorage.getItem('token')}`,
+    },
+  })
+  return response.data
+}
+
+// Get single watchlist
+export async function getWatchlist(id: string): Promise<Watchlist> {
+  const response = await api.get(`/watchlists/${id}`, {
+    headers: {
+      'Authorization': `Bearer ${localStorage.getItem('token')}`,
+    },
+  })
+  return response.data
+}
+
+// Create watchlist
+export async function createWatchlist(data: WatchlistCreate): Promise<Watchlist> {
+  const response = await api.post('/watchlists', data, {
+    headers: {
+      'Authorization': `Bearer ${localStorage.getItem('token')}`,
+    },
+  })
+  return response.data
+}
+
+// Update watchlist
+export async function updateWatchlist(
+  id: string,
+  data: WatchlistUpdate
+): Promise<Watchlist> {
+  const response = await api.put(`/watchlists/${id}`, data, {
+    headers: {
+      'Authorization': `Bearer ${localStorage.getItem('token')}`,
+    },
+  })
+  return response.data
+}
+
+// Delete watchlist
+export async function deleteWatchlist(id: string): Promise<void> {
+  await api.delete(`/watchlists/${id}`, {
+    headers: {
+      'Authorization': `Bearer ${localStorage.getItem('token')}`,
+    },
+  })
+}
+
+// Toggle watchlist active status
+export async function toggleWatchlist(id: string): Promise<Watchlist> {
+  const response = await api.put(`/watchlists/${id}/toggle`, {}, {
+    headers: {
+      'Authorization': `Bearer ${localStorage.getItem('token')}`,
+    },
+  })
+  return response.data
+}
