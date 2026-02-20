@@ -13,10 +13,13 @@ import ComparisonPage from './pages/ComparisonPage'
 import FTAWizardPage from './pages/FTAWizardPage'
 import CatalogsPage from './pages/CatalogsPage'
 import CatalogImpactPage from './pages/CatalogImpactPage'
+import NotificationsPage from './pages/NotificationsPage'
+import WatchlistsPage from './pages/WatchlistsPage'
 import { exportPDF, downloadBlob, getCalculation } from './services/api'
 import SearchFilters, { type SearchFilterValues } from './components/SearchFilters'
 import SavedCalculationsSidebar from './components/SavedCalculationsSidebar'
 import SaveCalculationModal from './components/SaveCalculationModal'
+import NotificationBell from './components/NotificationBell'
 import { Bookmark, Save } from 'lucide-react'
 
 // COST CALCULATOR COMPONENT - With Autocomplete, FTA, and Currency
@@ -450,12 +453,15 @@ function CalculatorPage() {
       <div className="max-w-4xl mx-auto">
         <div className="flex justify-between items-center mb-2">
           <h1 className="text-3xl font-bold text-blue-600">Tariff Navigator</h1>
-          <a
-            href="/dashboard"
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
-          >
-            Dashboard
-          </a>
+          <div className="flex items-center gap-4">
+            <NotificationBell />
+            <a
+              href="/dashboard"
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+            >
+              Dashboard
+            </a>
+          </div>
         </div>
         <p className="text-gray-600 mb-6">AI-powered tariff calculator with multi-currency support</p>
         <p className="text-xs text-gray-400 mb-4">v2.0.3 - Currency conversion enabled</p>
@@ -488,6 +494,10 @@ function App() {
         {/* Catalog routes */}
         <Route path="/catalogs" element={<CatalogsPage />} />
         <Route path="/catalogs/:catalogId/impact" element={<CatalogImpactPage />} />
+
+        {/* Notification & Watchlist routes */}
+        <Route path="/notifications" element={<NotificationsPage />} />
+        <Route path="/watchlists" element={<WatchlistsPage />} />
 
         {/* Login route */}
         <Route path="/login" element={<Login />} />
