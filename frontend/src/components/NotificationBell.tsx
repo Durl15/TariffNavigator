@@ -14,15 +14,30 @@ const NotificationBell: React.FC = () => {
   // Fetch unread count
   const fetchUnreadCount = async () => {
     try {
+      // Check if user is logged in
+      const token = localStorage.getItem('token')
+      if (!token) {
+        setUnreadCount(0)
+        return
+      }
+
       const data = await getUnreadCount()
       setUnreadCount(data.count)
     } catch (error) {
       console.error('Failed to fetch unread count:', error)
+      setUnreadCount(0)
     }
   }
 
   // Fetch recent notifications (for dropdown)
   const fetchRecentNotifications = async () => {
+    // Check if user is logged in
+    const token = localStorage.getItem('token')
+    if (!token) {
+      setRecentNotifications([])
+      return
+    }
+
     setLoading(true)
     try {
       const data = await getNotifications(1, 5) // Get 5 most recent

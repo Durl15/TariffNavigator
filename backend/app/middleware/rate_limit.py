@@ -56,6 +56,10 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         if any(request.url.path.startswith(path) for path in self.SKIP_PATHS):
             return await call_next(request)
 
+        # Skip rate limiting for CORS preflight requests (OPTIONS method)
+        if request.method == "OPTIONS":
+            return await call_next(request)
+
         # Get client IP address
         client_ip = self._get_client_ip(request)
 
