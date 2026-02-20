@@ -37,6 +37,41 @@ app.add_middleware(RateLimitMiddleware)
 
 app.include_router(api_router, prefix="/api/v1")
 
+
+# ============================================================================
+# APPLICATION LIFECYCLE EVENTS
+# ============================================================================
+
+@app.on_event("startup")
+async def startup_event():
+    """Initialize services on application startup."""
+    from app.services.scheduler import start_scheduler
+    import logging
+
+    logger = logging.getLogger(__name__)
+    logger.info("Starting TariffNavigator application...")
+
+    # Start background scheduler
+    start_scheduler()
+
+    logger.info("Application startup complete")
+
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    """Cleanup services on application shutdown."""
+    from app.services.scheduler import shutdown_scheduler
+    import logging
+
+    logger = logging.getLogger(__name__)
+    logger.info("Shutting down TariffNavigator application...")
+
+    # Shutdown background scheduler
+    shutdown_scheduler()
+
+    logger.info("Application shutdown complete")
+
+
 # PRICING PAGE
 @app.get("/pricing", response_class=HTMLResponse)
 async def pricing():
