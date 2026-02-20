@@ -1,4 +1,5 @@
 ﻿from sqlalchemy import Column, String, Boolean, DateTime, Integer, JSON, ForeignKey
+from sqlalchemy.orm import relationship
 from datetime import datetime
 import uuid
 from app.db.base_class import Base
@@ -28,6 +29,10 @@ class User(Base):
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow, nullable=True)
     deleted_at = Column(DateTime(timezone=True), nullable=True)  # Soft delete
+
+    # Relationships
+    notifications = relationship("Notification", back_populates="user", cascade="all, delete-orphan")
+    watchlists = relationship("Watchlist", back_populates="user", cascade="all, delete-orphan")
 
     def __repr__(self):
         return f"<User {self.email} ({self.role})>"
