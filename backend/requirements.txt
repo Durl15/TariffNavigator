@@ -30,6 +30,11 @@ weasyprint==60.1
 jinja2==3.1.2
 reportlab==4.2.5
 
+# External Monitoring (Phase 3)
+beautifulsoup4==4.12.3
+feedparser==6.0.11
+lxml==5.1.0
+
 # Task Queue (optional - for Phase 3)
 # celery==5.3.4
 # redis==5.0.1

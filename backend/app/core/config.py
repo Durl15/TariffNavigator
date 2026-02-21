@@ -29,6 +29,9 @@ class Settings(BaseSettings):
     FROM_NAME: str = "TariffNavigator"
     FRONTEND_URL: str = "http://localhost:3000"
 
+    # AI Settings (Phase 3)
+    OPENAI_API_KEY: str = ""  # Set via environment variable
+
     def model_post_init(self, __context) -> None:
         """Validate settings after initialization"""
         # Warn if using default secret key in production
