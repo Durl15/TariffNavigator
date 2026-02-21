@@ -1,5 +1,5 @@
 """
-Subscription Management Endpoints - Module 3 Phase 2
+Subscription Management Endpoints - Module 3 Phase 2/4
 Handles Stripe Checkout, subscription management, and billing
 """
 from fastapi import APIRouter, Depends, HTTPException, status, Query
@@ -13,6 +13,7 @@ from app.api.deps import get_current_user, get_current_admin_user, get_db
 from app.models.user import User
 from app.models.organization import Organization
 from app.models.subscription import Subscription, Payment
+from app.services.subscription_service import SubscriptionService
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
@@ -326,3 +327,95 @@ async def list_invoices(
         "invoices": [p.to_dict() for p in payments],
         "total": total
     }
+
+
+@router.get("/usage")
+async def get_usage_statistics(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Get usage statistics for current organization.
+
+    Returns current usage vs limits for:
+    - Monthly calculations
+    - Watchlists
+    - Saved calculations
+
+    Available to all authenticated users.
+    """
+    if not current_user.organization_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="User must be part of an organization"
+        )
+
+    service = SubscriptionService(db)
+
+    try:
+        stats = await service.get_usage_statistics(current_user.organization_id)
+        return stats
+
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+    except Exception as e:
+        logger.error(f"Error getting usage statistics: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to retrieve usage statistics"
+        )
+
+
+@router.post("/upgrade")
+async def upgrade_subscription(
+    new_plan: str = Query(..., description="Target plan to upgrade to"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_admin_user)
+):
+    """
+    Upgrade subscription plan (admin only).
+
+    Supports:
+    - Free → Pro
+    - Free → Enterprise
+    - Pro → Enterprise (with proration)
+
+    Args:
+        new_plan: Target plan ('pro' or 'enterprise')
+
+    Returns:
+        checkout_url for new subscriptions, or success message for upgrades
+    """
+    if new_plan not in ['pro', 'enterprise']:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid plan. Must be 'pro' or 'enterprise'"
+        )
+
+    if not current_user.organization_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="User must be part of an organization"
+        )
+
+    service = SubscriptionService(db)
+
+    try:
+        result = await service.upgrade_plan(current_user.organization_id, new_plan)
+
+        return result
+
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+    except Exception as e:
+        logger.error(f"Error upgrading subscription: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to upgrade subscription: {str(e)}"
+        )

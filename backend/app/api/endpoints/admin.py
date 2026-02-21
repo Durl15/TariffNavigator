@@ -25,6 +25,8 @@ from app.schemas.admin import (
 )
 from app.services.auth import get_password_hash
 from app.services.rate_limiter import RateLimiterService
+from app.services.subscription_service import SubscriptionService
+from app.models.subscription import Subscription
 
 router = APIRouter()
 
@@ -1131,4 +1133,193 @@ async def reset_organization_quota(
         "new_count": 0,
         "quota_limit": quota_usage.quota_limit,
         "reset_by": current_user.email
+    }
+
+
+# ============================================================================
+# SUBSCRIPTION MANAGEMENT ENDPOINTS (3 endpoints) - Module 3 Phase 4
+# ============================================================================
+
+@router.get("/subscriptions")
+async def list_all_subscriptions(
+    status: Optional[str] = Query(None, description="Filter by subscription status"),
+    plan: Optional[str] = Query(None, description="Filter by plan (pro, enterprise)"),
+    page: int = Query(1, ge=1, description="Page number"),
+    page_size: int = Query(20, ge=1, le=100, description="Items per page"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_superuser)
+):
+    """
+    List all subscriptions (superadmin only).
+
+    Provides overview of all active, canceled, and past_due subscriptions.
+    """
+    # Build query
+    query = select(Subscription)
+
+    if status:
+        query = query.where(Subscription.status == status)
+
+    if plan:
+        query = query.where(Subscription.plan == plan)
+
+    # Get total count
+    count_query = select(func.count()).select_from(query.subquery())
+    total_result = await db.execute(count_query)
+    total = total_result.scalar()
+
+    # Apply pagination
+    offset = (page - 1) * page_size
+    query = query.order_by(desc(Subscription.created_at)).offset(offset).limit(page_size)
+
+    # Execute query
+    result = await db.execute(query)
+    subscriptions = result.scalars().all()
+
+    return {
+        "subscriptions": [sub.to_dict() for sub in subscriptions],
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "total_pages": math.ceil(total / page_size)
+    }
+
+
+@router.get("/subscriptions/{org_id}")
+async def get_organization_subscription(
+    org_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_superuser)
+):
+    """
+    Get subscription details for a specific organization (superadmin only).
+    """
+    # Get organization
+    org = await db.get(Organization, org_id)
+    if not org:
+        raise HTTPException(status_code=404, detail="Organization not found")
+
+    # Get subscription
+    stmt = select(Subscription).where(Subscription.organization_id == org_id)
+    result = await db.execute(stmt)
+    subscription = result.scalar_one_or_none()
+
+    # Get usage statistics
+    service = SubscriptionService(db)
+    try:
+        usage = await service.get_usage_statistics(org_id)
+    except ValueError:
+        usage = None
+
+    return {
+        "organization": {
+            "id": org.id,
+            "name": org.name,
+            "plan": org.plan,
+            "subscription_status": org.subscription_status,
+            "created_at": org.created_at.isoformat() if org.created_at else None
+        },
+        "subscription": subscription.to_dict() if subscription else None,
+        "usage": usage
+    }
+
+
+@router.get("/revenue/summary")
+async def get_revenue_summary(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_superuser)
+):
+    """
+    Get revenue metrics and subscription statistics (superadmin only).
+
+    Returns:
+    - Monthly Recurring Revenue (MRR)
+    - Total revenue
+    - Current month revenue
+    - Active subscriptions count
+    - Subscription breakdown by plan
+    """
+    service = SubscriptionService(db)
+    summary = await service.get_revenue_summary()
+
+    # Get subscription breakdown by plan
+    stmt = select(
+        Subscription.plan,
+        func.count(Subscription.id).label('count')
+    ).where(
+        Subscription.status == 'active'
+    ).group_by(Subscription.plan)
+
+    result = await db.execute(stmt)
+    plan_breakdown = {row.plan: row.count for row in result}
+
+    summary['plan_breakdown'] = plan_breakdown
+
+    return summary
+
+
+@router.post("/subscriptions/{org_id}/override")
+async def override_organization_plan(
+    org_id: str,
+    new_plan: str = Query(..., description="New plan to set (free, pro, enterprise)"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_superuser)
+):
+    """
+    Manually override organization plan (superadmin only).
+
+    Use with caution - bypasses normal subscription flow.
+    Useful for:
+    - Providing free trials
+    - Compensating for billing issues
+    - Custom enterprise agreements
+    """
+    if new_plan not in ['free', 'pro', 'enterprise']:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid plan. Must be 'free', 'pro', or 'enterprise'"
+        )
+
+    # Get organization
+    org = await db.get(Organization, org_id)
+    if not org:
+        raise HTTPException(status_code=404, detail="Organization not found")
+
+    old_plan = org.plan
+
+    # Update organization plan
+    org.plan = new_plan
+
+    # Update quotas
+    if new_plan == 'free':
+        org.max_calculations_per_month = 100
+    elif new_plan == 'pro':
+        org.max_calculations_per_month = 1000
+    elif new_plan == 'enterprise':
+        org.max_calculations_per_month = 10000
+
+    await db.commit()
+
+    # Log action
+    audit_log = AuditLog(
+        user_id=current_user.id,
+        action="plan_override",
+        resource_type="organization",
+        resource_id=org_id,
+        details={
+            "old_plan": old_plan,
+            "new_plan": new_plan,
+            "reason": "Manual override by superadmin"
+        }
+    )
+    db.add(audit_log)
+    await db.commit()
+
+    return {
+        "message": "Plan override successful",
+        "organization_id": org_id,
+        "organization_name": org.name,
+        "old_plan": old_plan,
+        "new_plan": new_plan,
+        "updated_by": current_user.email
     }
