@@ -43,6 +43,7 @@ def register_jobs():
     # Import here to avoid circular dependencies
     from app.services.change_monitor import check_tariff_changes
     from app.services.digest_service import send_daily_digests, send_weekly_digests
+    from app.services.external_monitor import check_external_sources
 
     # Register tariff change monitoring job (runs every hour)
     scheduler.add_job(
@@ -78,7 +79,17 @@ def register_jobs():
         replace_existing=True
     )
 
-    logger.info("Registered scheduled jobs: tariff_monitor (hourly), daily_digest (8AM daily), weekly_digest (Mon 8AM)")
+    # Register external source monitoring job (runs every 6 hours)
+    scheduler.add_job(
+        check_external_sources,
+        'interval',
+        hours=6,
+        id='external_monitor',
+        name='Monitor External Sources',
+        replace_existing=True
+    )
+
+    logger.info("Registered scheduled jobs: tariff_monitor (hourly), daily_digest (8AM daily), weekly_digest (Mon 8AM), external_monitor (6h)")
 
 
 def start_scheduler():

@@ -69,13 +69,17 @@ class EmailService:
             message.attach(html_part)
 
             # Send email
+            # For Mailtrap port 2525, TLS is optional
+            use_tls = self.smtp_port in [587, 465]
+
             await aiosmtplib.send(
                 message,
                 hostname=self.smtp_host,
                 port=self.smtp_port,
                 username=self.smtp_user,
                 password=self.smtp_password,
-                start_tls=True
+                start_tls=use_tls if self.smtp_port != 465 else False,
+                use_tls=True if self.smtp_port == 465 else False
             )
 
             logger.info(f"Email sent successfully to {to_email}")
