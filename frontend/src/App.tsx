@@ -15,6 +15,9 @@ import CatalogsPage from './pages/CatalogsPage'
 import CatalogImpactPage from './pages/CatalogImpactPage'
 import NotificationsPage from './pages/NotificationsPage'
 import WatchlistsPage from './pages/WatchlistsPage'
+import Pricing from './pages/Pricing'
+import SubscriptionSuccess from './pages/SubscriptionSuccess'
+import Billing from './pages/Billing'
 import { exportPDF, downloadBlob, getCalculation } from './services/api'
 import SearchFilters, { type SearchFilterValues } from './components/SearchFilters'
 import SavedCalculationsSidebar from './components/SavedCalculationsSidebar'
@@ -498,6 +501,11 @@ function App() {
         {/* Notification & Watchlist routes */}
         <Route path="/notifications" element={<NotificationsPage />} />
         <Route path="/watchlists" element={<WatchlistsPage />} />
+
+        {/* Billing & Subscription routes */}
+        <Route path="/pricing" element={<Pricing />} />
+        <Route path="/billing" element={<Billing />} />
+        <Route path="/subscription/success" element={<SubscriptionSuccess />} />
 
         {/* Login route */}
         <Route path="/login" element={<Login />} />
