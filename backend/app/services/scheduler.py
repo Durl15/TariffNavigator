@@ -42,6 +42,7 @@ def register_jobs():
     """
     # Import here to avoid circular dependencies
     from app.services.change_monitor import check_tariff_changes
+    from app.services.digest_service import send_daily_digests, send_weekly_digests
 
     # Register tariff change monitoring job (runs every hour)
     scheduler.add_job(
@@ -54,7 +55,30 @@ def register_jobs():
         next_run_time=None  # Don't run immediately on startup
     )
 
-    logger.info("Registered scheduled jobs: tariff_monitor (hourly)")
+    # Register daily digest job (runs every day at 8 AM)
+    scheduler.add_job(
+        send_daily_digests,
+        'cron',
+        hour=8,
+        minute=0,
+        id='daily_digest',
+        name='Send Daily Digests',
+        replace_existing=True
+    )
+
+    # Register weekly digest job (runs every Monday at 8 AM)
+    scheduler.add_job(
+        send_weekly_digests,
+        'cron',
+        day_of_week='mon',
+        hour=8,
+        minute=0,
+        id='weekly_digest',
+        name='Send Weekly Digests',
+        replace_existing=True
+    )
+
+    logger.info("Registered scheduled jobs: tariff_monitor (hourly), daily_digest (8AM daily), weekly_digest (Mon 8AM)")
 
 
 def start_scheduler():

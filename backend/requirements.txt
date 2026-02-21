@@ -22,8 +22,8 @@ alembic==1.13.0
 # Background Tasks (Phase 1)
 apscheduler==3.10.4
 
-# Email (optional - for Phase 2)
-# sendgrid==6.11.0
+# Email (Phase 2)
+aiosmtplib==3.0.1
 
 # PDF Generation
 weasyprint==60.1
