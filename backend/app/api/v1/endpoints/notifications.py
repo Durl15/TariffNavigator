@@ -9,6 +9,8 @@ from typing import Optional
 from datetime import datetime
 
 from app.api.deps import get_db, get_current_user
+from app.api.deps_feature_gate import require_feature
+from app.core.subscription_features import Feature
 from app.models.user import User
 from app.models.notification import Notification
 from app.schemas.notification import (
@@ -200,7 +202,11 @@ async def delete_notification(
     return None
 
 
-@router.put("/preferences", response_model=dict)
+@router.put(
+    "/preferences",
+    response_model=dict,
+    dependencies=[Depends(require_feature(Feature.EMAIL_ALERTS))]
+)
 async def update_email_preferences(
     preferences: dict,
     db: AsyncSession = Depends(get_db),
@@ -208,6 +214,8 @@ async def update_email_preferences(
 ):
     """
     Update email notification preferences.
+
+    **Requires:** Pro or Enterprise plan
 
     Expected format:
     {
@@ -251,7 +259,10 @@ async def get_email_preferences(
     return email_prefs
 
 
-@router.post("/test-email")
+@router.post(
+    "/test-email",
+    dependencies=[Depends(require_feature(Feature.EMAIL_ALERTS))]
+)
 async def send_test_email(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -259,6 +270,8 @@ async def send_test_email(
     """
     Send a test notification email to the current user.
     For testing email configuration.
+
+    **Requires:** Pro or Enterprise plan
     """
     # Get user's first notification or create a test one
     query = select(Notification).where(

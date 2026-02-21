@@ -9,6 +9,8 @@ from typing import List
 import uuid
 
 from app.api.deps import get_db, get_current_user
+from app.api.deps_feature_gate import require_feature, check_watchlist_limit
+from app.core.subscription_features import Feature
 from app.models.user import User
 from app.models.watchlist import Watchlist
 from app.schemas.watchlist import (
@@ -21,7 +23,15 @@ from app.schemas.watchlist import (
 router = APIRouter()
 
 
-@router.post("", response_model=WatchlistResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "",
+    response_model=WatchlistResponse,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[
+        Depends(require_feature(Feature.WATCHLISTS)),
+        Depends(check_watchlist_limit)
+    ]
+)
 async def create_watchlist(
     data: WatchlistCreate,
     db: AsyncSession = Depends(get_db),
@@ -32,6 +42,9 @@ async def create_watchlist(
 
     Users can monitor specific HS codes across multiple countries.
     Notifications will be sent when tariff rates change.
+
+    **Requires:** Pro or Enterprise plan
+    **Limits:** Free: 1 watchlist, Pro: 10 watchlists, Enterprise: Unlimited
     """
     # Create new watchlist
     watchlist = Watchlist(
