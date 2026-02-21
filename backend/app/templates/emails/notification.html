@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }}</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .email-container {
+            background-color: #ffffff;
+            border-radius: 8px;
+            padding: 30px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #4F46E5;
+            margin-bottom: 30px;
+        }
+        .logo {
+            font-size: 24px;
+            font-weight: bold;
+            color: #4F46E5;
+        }
+        .notification-title {
+            color: #1F2937;
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 15px;
+        }
+        .notification-message {
+            color: #4B5563;
+            font-size: 16px;
+            margin-bottom: 25px;
+            line-height: 1.8;
+        }
+        .notification-meta {
+            background-color: #F3F4F6;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 25px;
+        }
+        .meta-item {
+            color: #6B7280;
+            font-size: 14px;
+            margin-bottom: 5px;
+        }
+        .meta-item strong {
+            color: #374151;
+        }
+        .button {
+            display: inline-block;
+            background-color: #4F46E5;
+            color: #ffffff;
+            text-decoration: none;
+            padding: 12px 30px;
+            border-radius: 6px;
+            font-weight: 500;
+            margin: 10px 0;
+        }
+        .button:hover {
+            background-color: #4338CA;
+        }
+        .footer {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #E5E7EB;
+            text-align: center;
+            color: #6B7280;
+            font-size: 14px;
+        }
+        .footer a {
+            color: #4F46E5;
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="email-container">
+        <div class="header">
+            <div class="logo">{{ app_name }}</div>
+        </div>
+
+        <div class="notification-title">
+            {{ notification.title }}
+        </div>
+
+        <div class="notification-message">
+            {{ notification.message }}
+        </div>
+
+        {% if notification.data %}
+        <div class="notification-meta">
+            {% if notification.data.hs_code %}
+            <div class="meta-item">
+                <strong>HS Code:</strong> {{ notification.data.hs_code }}
+            </div>
+            {% endif %}
+            {% if notification.data.country %}
+            <div class="meta-item">
+                <strong>Country:</strong> {{ notification.data.country }}
+            </div>
+            {% endif %}
+            {% if notification.data.old_rate and notification.data.new_rate %}
+            <div class="meta-item">
+                <strong>Rate Change:</strong> {{ notification.data.old_rate }} → {{ notification.data.new_rate }}
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        {% if notification.link %}
+        <div style="text-align: center;">
+            <a href="{{ notification.link }}" class="button">View Details</a>
+        </div>
+        {% endif %}
+
+        <div class="footer">
+            <p>
+                You received this email because you have notifications enabled for your watchlists.
+            </p>
+            <p>
+                <a href="{{ app_url }}/settings/notifications">Manage notification preferences</a> |
+                <a href="{{ app_url }}">Visit {{ app_name }}</a>
+            </p>
+            <p style="margin-top: 15px; color: #9CA3AF; font-size: 12px;">
+                {{ created_at.strftime('%B %d, %Y at %I:%M %p') }}
+            </p>
+        </div>
+    </div>
+</body>
+</html>

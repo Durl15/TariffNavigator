@@ -14,6 +14,8 @@ from app.models.hs_code import HSCode
 from app.models.watchlist import Watchlist
 from app.models.notification import Notification
 from app.models.tariff_change import TariffChangeLog
+from app.models.user import User
+from app.services.email_service import email_service
 
 logger = logging.getLogger(__name__)
 
@@ -154,6 +156,30 @@ async def match_and_notify(change: TariffChangeLog, db: AsyncSession):
 
                 db.add(notification)
                 notifications_created += 1
+
+                # Send instant email if user has it enabled (Phase 2)
+                try:
+                    # Get user to check email preferences
+                    user_result = await db.execute(
+                        select(User).where(User.id == watchlist.user_id)
+                    )
+                    user = user_result.scalar_one_or_none()
+
+                    if user and user.is_email_verified:
+                        # Check if instant emails are enabled
+                        prefs = user.preferences or {}
+                        email_prefs = prefs.get('email_notifications', {})
+
+                        if email_prefs.get('enabled') and email_prefs.get('instant_notifications'):
+                            # Send instant email notification
+                            await email_service.send_notification_email(
+                                to_email=user.email,
+                                notification=notification
+                            )
+                            logger.info(f"Sent instant email to {user.email} for {change.hs_code}")
+
+                except Exception as e:
+                    logger.error(f"Failed to send instant email: {str(e)}")
 
         if notifications_created > 0:
             # Mark change as notified

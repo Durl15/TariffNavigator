@@ -17,6 +17,7 @@ from app.schemas.notification import (
     UnreadCountResponse,
     MarkReadResponse
 )
+from app.services.email_service import email_service
 
 router = APIRouter()
 
@@ -197,3 +198,99 @@ async def delete_notification(
     await db.commit()
 
     return None
+
+
+@router.put("/preferences", response_model=dict)
+async def update_email_preferences(
+    preferences: dict,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Update email notification preferences.
+
+    Expected format:
+    {
+        "enabled": true,
+        "instant_notifications": false,
+        "digest_frequency": "daily"  // or "weekly" or "never"
+    }
+    """
+    # Get current preferences or initialize
+    user_prefs = current_user.preferences or {}
+
+    # Update email notification preferences
+    user_prefs['email_notifications'] = {
+        'enabled': preferences.get('enabled', True),
+        'instant_notifications': preferences.get('instant_notifications', False),
+        'digest_frequency': preferences.get('digest_frequency', 'daily')
+    }
+
+    # Update user
+    current_user.preferences = user_prefs
+    await db.commit()
+    await db.refresh(current_user)
+
+    return user_prefs.get('email_notifications', {})
+
+
+@router.get("/preferences", response_model=dict)
+async def get_email_preferences(
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Get current email notification preferences.
+    """
+    user_prefs = current_user.preferences or {}
+    email_prefs = user_prefs.get('email_notifications', {
+        'enabled': False,
+        'instant_notifications': False,
+        'digest_frequency': 'daily'
+    })
+
+    return email_prefs
+
+
+@router.post("/test-email")
+async def send_test_email(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Send a test notification email to the current user.
+    For testing email configuration.
+    """
+    # Get user's first notification or create a test one
+    query = select(Notification).where(
+        Notification.user_id == current_user.id
+    ).limit(1)
+    result = await db.execute(query)
+    notification = result.scalar_one_or_none()
+
+    if not notification:
+        # Create a test notification
+        notification = Notification(
+            id=str(__import__('uuid').uuid4()),
+            user_id=current_user.id,
+            type='rate_change',
+            title='Test Email Notification',
+            message='This is a test email to verify your email configuration is working correctly.',
+            link='/notifications',
+            data={'test': True},
+            is_read=False,
+            created_at=datetime.utcnow()
+        )
+
+    # Send email
+    success = await email_service.send_notification_email(
+        to_email=current_user.email,
+        notification=notification
+    )
+
+    if success:
+        return {"message": f"Test email sent successfully to {current_user.email}"}
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to send test email. Check SMTP configuration."
+        )
