@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Subscription Canceled - TariffNavigator</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f5f5f5;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 600px;
+            margin: 40px auto;
+            background-color: #ffffff;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .header {
+            background-color: #718096;
+            color: white;
+            padding: 40px 30px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: 600;
+        }
+        .content {
+            padding: 40px 30px;
+        }
+        .info-box {
+            background-color: #edf2f7;
+            padding: 20px;
+            border-radius: 6px;
+            margin: 20px 0;
+        }
+        .cta-button {
+            display: inline-block;
+            background-color: #667eea;
+            color: white;
+            padding: 14px 32px;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: 600;
+            margin: 20px 0;
+        }
+        .footer {
+            background-color: #f7fafc;
+            padding: 30px;
+            text-align: center;
+            color: #718096;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Subscription Canceled</h1>
+        </div>
+
+        <div class="content">
+            <p>Hi {{ user_name }},</p>
+
+            <p>
+                We're sorry to see you go. Your {{ plan_name }} subscription has been canceled as requested.
+            </p>
+
+            <div class="info-box">
+                <h4 style="margin-top: 0;">What this means:</h4>
+                <ul style="margin: 10px 0; padding-left: 20px;">
+                    <li>You'll continue to have access to {{ plan_name }} features until <strong>{{ access_until }}</strong></li>
+                    <li>After that date, your account will revert to the Free plan</li>
+                    <li>No further charges will be made</li>
+                    <li>Your data and saved calculations will be preserved</li>
+                </ul>
+            </div>
+
+            <p>
+                <strong>Free Plan Limits:</strong>
+            </p>
+            <ul>
+                <li>100 calculations per month</li>
+                <li>1 watchlist</li>
+                <li>Basic tariff lookup</li>
+            </ul>
+
+            <p style="margin-top: 30px;">
+                <strong>Changed your mind?</strong><br>
+                You can reactivate your subscription anytime before {{ access_until }}.
+            </p>
+
+            <center>
+                <a href="{{ reactivate_url }}" class="cta-button">Reactivate Subscription</a>
+            </center>
+
+            <p style="margin-top: 30px; color: #718096; font-size: 14px;">
+                We'd love to hear your feedback! If you have a moment, please let us know why you canceled
+                so we can improve our service.
+            </p>
+
+            <p>
+                Thank you for being a TariffNavigator customer. We hope to see you again soon!
+            </p>
+        </div>
+
+        <div class="footer">
+            <p>
+                <strong>TariffNavigator</strong><br>
+                Questions? Reply to this email anytime
+            </p>
+            <p style="margin-top: 20px; font-size: 12px;">
+                © 2026 TariffNavigator. All rights reserved.
+            </p>
+        </div>
+    </div>
+</body>
+</html>

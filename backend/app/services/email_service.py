@@ -182,6 +182,267 @@ class EmailService:
             logger.error(f"Failed to send digest email: {str(e)}")
             return False
 
+    async def send_subscription_created_email(
+        self,
+        to_email: str,
+        user_name: str,
+        plan: str,
+        organization_name: str,
+        next_billing_date: str,
+        calculations_limit: int
+    ) -> bool:
+        """
+        Send welcome email when subscription is created.
+
+        Args:
+            to_email: User email
+            user_name: User's full name
+            plan: Subscription plan ('pro' or 'enterprise')
+            organization_name: Organization name
+            next_billing_date: Next billing date string
+            calculations_limit: Monthly calculation limit
+
+        Returns:
+            bool: True if sent successfully
+        """
+        try:
+            # Plan details
+            price = "49" if plan == "pro" else "199"
+            plan_name = plan.capitalize()
+
+            html_body = self.render_template('subscription_created.html', {
+                'user_name': user_name,
+                'plan': plan,
+                'plan_name': plan_name,
+                'price': price,
+                'next_billing_date': next_billing_date,
+                'calculations_limit': f"{calculations_limit:,}",
+                'dashboard_url': f"{settings.FRONTEND_URL}/dashboard",
+                'help_url': f"{settings.FRONTEND_URL}/help",
+                'billing_url': f"{settings.FRONTEND_URL}/billing",
+                'unsubscribe_url': f"{settings.FRONTEND_URL}/settings/notifications"
+            })
+
+            subject = f"Welcome to TariffNavigator {plan_name}! 🎉"
+            return await self.send_email(to_email, subject, html_body)
+
+        except Exception as e:
+            logger.error(f"Failed to send subscription created email: {str(e)}")
+            return False
+
+    async def send_payment_failed_email(
+        self,
+        to_email: str,
+        user_name: str,
+        plan: str,
+        amount: float,
+        attempt_count: int,
+        billing_date: str
+    ) -> bool:
+        """
+        Send email when payment fails.
+
+        Args:
+            to_email: User email
+            user_name: User's full name
+            plan: Subscription plan
+            amount: Amount due
+            attempt_count: Number of payment attempts
+            billing_date: Billing date string
+
+        Returns:
+            bool: True if sent successfully
+        """
+        try:
+            plan_name = plan.capitalize()
+
+            html_body = self.render_template('payment_failed.html', {
+                'user_name': user_name,
+                'plan_name': plan_name,
+                'amount': f"{amount:.2f}",
+                'attempt_count': attempt_count,
+                'billing_date': billing_date,
+                'update_payment_url': f"{settings.FRONTEND_URL}/billing"
+            })
+
+            subject = "⚠️ Payment Failed - Action Required"
+            return await self.send_email(to_email, subject, html_body)
+
+        except Exception as e:
+            logger.error(f"Failed to send payment failed email: {str(e)}")
+            return False
+
+    async def send_subscription_canceled_email(
+        self,
+        to_email: str,
+        user_name: str,
+        plan: str,
+        access_until: str
+    ) -> bool:
+        """
+        Send confirmation email when subscription is canceled.
+
+        Args:
+            to_email: User email
+            user_name: User's full name
+            plan: Subscription plan that was canceled
+            access_until: Date when access ends
+
+        Returns:
+            bool: True if sent successfully
+        """
+        try:
+            plan_name = plan.capitalize()
+
+            html_body = self.render_template('subscription_canceled.html', {
+                'user_name': user_name,
+                'plan_name': plan_name,
+                'access_until': access_until,
+                'reactivate_url': f"{settings.FRONTEND_URL}/pricing"
+            })
+
+            subject = "Subscription Canceled - We're sorry to see you go"
+            return await self.send_email(to_email, subject, html_body)
+
+        except Exception as e:
+            logger.error(f"Failed to send subscription canceled email: {str(e)}")
+            return False
+
+    async def send_quota_warning_email(
+        self,
+        to_email: str,
+        user_name: str,
+        plan: str,
+        quota_type: str,
+        current_usage: int,
+        quota_limit: int,
+        usage_percentage: float,
+        reset_date: str,
+        days_until_reset: int
+    ) -> bool:
+        """
+        Send warning email when approaching quota limit (80%).
+
+        Args:
+            to_email: User email
+            user_name: User's full name
+            plan: Current plan
+            quota_type: Type of quota ('calculations', 'watchlists', etc.)
+            current_usage: Current usage count
+            quota_limit: Quota limit
+            usage_percentage: Percentage used
+            reset_date: When quota resets
+            days_until_reset: Days until reset
+
+        Returns:
+            bool: True if sent successfully
+        """
+        try:
+            plan_name = plan.capitalize()
+
+            # Format quota type for display
+            quota_display = quota_type.replace('_', ' ').title()
+
+            # Define action blocked
+            action_map = {
+                'calculations': 'perform calculations',
+                'watchlists': 'create watchlists',
+                'saved_calculations': 'save calculations'
+            }
+            action_blocked = action_map.get(quota_type, quota_type)
+
+            # Higher plan limits
+            pro_limit = "1,000" if quota_type == 'calculations' else "10"
+            enterprise_limit = "10,000" if quota_type == 'calculations' else "Unlimited"
+
+            html_body = self.render_template('quota_warning.html', {
+                'user_name': user_name,
+                'plan': plan,
+                'plan_name': plan_name,
+                'quota_type': quota_display,
+                'current_usage': f"{current_usage:,}",
+                'quota_limit': f"{quota_limit:,}",
+                'usage_percentage': f"{usage_percentage:.0f}",
+                'reset_date': reset_date,
+                'days_until_reset': days_until_reset,
+                'action_blocked': action_blocked,
+                'pro_limit': pro_limit,
+                'enterprise_limit': enterprise_limit,
+                'upgrade_url': f"{settings.FRONTEND_URL}/pricing",
+                'billing_url': f"{settings.FRONTEND_URL}/billing"
+            })
+
+            subject = f"⚠️ Approaching Your {quota_display} Limit"
+            return await self.send_email(to_email, subject, html_body)
+
+        except Exception as e:
+            logger.error(f"Failed to send quota warning email: {str(e)}")
+            return False
+
+    async def send_quota_exceeded_email(
+        self,
+        to_email: str,
+        user_name: str,
+        plan: str,
+        quota_type: str,
+        current_usage: int,
+        quota_limit: int,
+        reset_date: str,
+        days_until_reset: int
+    ) -> bool:
+        """
+        Send alert email when quota limit is exceeded.
+
+        Args:
+            to_email: User email
+            user_name: User's full name
+            plan: Current plan
+            quota_type: Type of quota
+            current_usage: Current usage count
+            quota_limit: Quota limit
+            reset_date: When quota resets
+            days_until_reset: Days until reset
+
+        Returns:
+            bool: True if sent successfully
+        """
+        try:
+            plan_name = plan.capitalize()
+            quota_display = quota_type.replace('_', ' ').title()
+
+            action_map = {
+                'calculations': 'perform calculations',
+                'watchlists': 'create watchlists',
+                'saved_calculations': 'save calculations'
+            }
+            action_blocked = action_map.get(quota_type, quota_type)
+
+            pro_limit = "1,000" if quota_type == 'calculations' else "10"
+            enterprise_limit = "10,000" if quota_type == 'calculations' else "Unlimited"
+
+            html_body = self.render_template('quota_exceeded.html', {
+                'user_name': user_name,
+                'plan': plan,
+                'plan_name': plan_name,
+                'quota_type': quota_display,
+                'current_usage': f"{current_usage:,}",
+                'quota_limit': f"{quota_limit:,}",
+                'reset_date': reset_date,
+                'days_until_reset': days_until_reset,
+                'action_blocked': action_blocked,
+                'pro_limit': pro_limit,
+                'enterprise_limit': enterprise_limit,
+                'upgrade_url': f"{settings.FRONTEND_URL}/pricing",
+                'billing_url': f"{settings.FRONTEND_URL}/billing"
+            })
+
+            subject = f"❌ {quota_display} Limit Reached"
+            return await self.send_email(to_email, subject, html_body)
+
+        except Exception as e:
+            logger.error(f"Failed to send quota exceeded email: {str(e)}")
+            return False
+
 
 # Global instance
 email_service = EmailService()
