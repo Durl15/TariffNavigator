@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quota Exceeded - TariffNavigator</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f5f5f5;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 600px;
+            margin: 40px auto;
+            background-color: #ffffff;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .header {
+            background-color: #f56565;
+            color: white;
+            padding: 40px 30px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: 600;
+        }
+        .content {
+            padding: 40px 30px;
+        }
+        .alert-box {
+            background-color: #fff5f5;
+            border-left: 4px solid #f56565;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        .cta-button {
+            display: inline-block;
+            background-color: #667eea;
+            color: white;
+            padding: 14px 32px;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: 600;
+            margin: 20px 0;
+        }
+        .info-box {
+            background-color: #edf2f7;
+            padding: 20px;
+            border-radius: 6px;
+            margin: 20px 0;
+        }
+        .footer {
+            background-color: #f7fafc;
+            padding: 30px;
+            text-align: center;
+            color: #718096;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>❌ Quota Limit Reached</h1>
+        </div>
+
+        <div class="content">
+            <p>Hi {{ user_name }},</p>
+
+            <div class="alert-box">
+                <h3 style="margin-top: 0; color: #c53030;">Monthly Limit Reached</h3>
+                <p>
+                    You've reached your {{ quota_type }} limit of <strong>{{ quota_limit }}</strong> for this month on your {{ plan_name }} plan.
+                </p>
+            </div>
+
+            <p>
+                <strong>Current Usage:</strong> {{ current_usage }} / {{ quota_limit }}
+            </p>
+
+            <div class="info-box">
+                <h4 style="margin-top: 0;">What this means:</h4>
+                <ul style="margin: 10px 0; padding-left: 20px;">
+                    <li>You can't {{ action_blocked }} until your quota resets</li>
+                    <li>Your quota will automatically reset on <strong>{{ reset_date }}</strong></li>
+                    <li>That's in <strong>{{ days_until_reset }} days</strong></li>
+                    <li>All your data and settings are safe</li>
+                </ul>
+            </div>
+
+            <p>
+                <strong>Need access right now?</strong><br>
+                Upgrade to a higher plan to get instant access and higher limits:
+            </p>
+
+            <ul>
+                {% if plan == 'free' %}
+                <li><strong>Pro Plan:</strong> {{ pro_limit }} {{ quota_type }}/month - $49/month</li>
+                <li><strong>Enterprise Plan:</strong> {{ enterprise_limit }} {{ quota_type }}/month (10x more!) - $199/month</li>
+                {% elif plan == 'pro' %}
+                <li><strong>Enterprise Plan:</strong> {{ enterprise_limit }} {{ quota_type }}/month - $199/month</li>
+                <li>That's 10x your current limit!</li>
+                {% endif %}
+            </ul>
+
+            <center>
+                <a href="{{ upgrade_url }}" class="cta-button">Upgrade Now</a>
+            </center>
+
+            <div class="info-box" style="margin-top: 30px;">
+                <h4 style="margin-top: 0;">💡 Pro Tip</h4>
+                <p>
+                    If you frequently hit your quota limit, consider upgrading to avoid interruptions
+                    in the future. Our higher plans include more quotas plus additional premium features!
+                </p>
+            </div>
+
+            <p style="margin-top: 30px; color: #718096; font-size: 14px;">
+                Track your usage anytime on your
+                <a href="{{ billing_url }}" style="color: #667eea;">billing dashboard</a>.
+            </p>
+        </div>
+
+        <div class="footer">
+            <p>
+                <strong>TariffNavigator</strong><br>
+                Questions? Contact us at support@tariffnavigator.com
+            </p>
+            <p style="margin-top: 20px; font-size: 12px;">
+                © 2026 TariffNavigator. All rights reserved.
+            </p>
+        </div>
+    </div>
+</body>
+</html>

@@ -11,6 +11,8 @@ import uuid
 
 from app.models.subscription import Subscription, Payment, SubscriptionStatus
 from app.models.organization import Organization
+from app.models.user import User
+from app.services.email_service import email_service
 
 logger = logging.getLogger(__name__)
 
@@ -102,6 +104,33 @@ class WebhookService:
 
         logger.info(f"Created subscription {subscription.id} for org {org_id}, plan {plan}")
 
+        # Send welcome email to organization admin
+        try:
+            # Get organization admin user
+            stmt = select(User).where(
+                User.organization_id == org_id,
+                User.role.in_(['admin', 'superadmin'])
+            ).limit(1)
+            result = await self.db.execute(stmt)
+            admin_user = result.scalar_one_or_none()
+
+            if admin_user and admin_user.email:
+                calculations_limit = 1000 if plan == 'pro' else 10000
+                next_billing = subscription.current_period_end.strftime('%B %d, %Y')
+
+                await email_service.send_subscription_created_email(
+                    to_email=admin_user.email,
+                    user_name=admin_user.full_name or admin_user.email,
+                    plan=plan,
+                    organization_name=org.name,
+                    next_billing_date=next_billing,
+                    calculations_limit=calculations_limit
+                )
+                logger.info(f"Sent subscription created email to {admin_user.email}")
+        except Exception as e:
+            # Don't fail webhook if email fails
+            logger.error(f"Failed to send subscription created email: {str(e)}")
+
     async def handle_subscription_updated(self, stripe_subscription):
         """
         Handle subscription updates (plan changes, renewals).
@@ -166,6 +195,28 @@ class WebhookService:
         await self.db.commit()
 
         logger.info(f"Subscription {subscription.id} canceled, org downgraded to free")
+
+        # Send cancellation confirmation email
+        try:
+            stmt = select(User).where(
+                User.organization_id == subscription.organization_id,
+                User.role.in_(['admin', 'superadmin'])
+            ).limit(1)
+            result = await self.db.execute(stmt)
+            admin_user = result.scalar_one_or_none()
+
+            if admin_user and admin_user.email:
+                access_until = subscription.current_period_end.strftime('%B %d, %Y') if subscription.current_period_end else "now"
+
+                await email_service.send_subscription_canceled_email(
+                    to_email=admin_user.email,
+                    user_name=admin_user.full_name or admin_user.email,
+                    plan=subscription.plan,
+                    access_until=access_until
+                )
+                logger.info(f"Sent subscription canceled email to {admin_user.email}")
+        except Exception as e:
+            logger.error(f"Failed to send subscription canceled email: {str(e)}")
 
     async def handle_invoice_paid(self, invoice):
         """
@@ -246,7 +297,30 @@ class WebhookService:
 
         logger.warning(f"Payment failed for subscription {subscription.id}, attempt {invoice.attempt_count}")
 
-        # TODO: Send email notification (Phase 2 email integration)
+        # Send payment failed email
+        try:
+            stmt = select(User).where(
+                User.organization_id == subscription.organization_id,
+                User.role.in_(['admin', 'superadmin'])
+            ).limit(1)
+            result = await self.db.execute(stmt)
+            admin_user = result.scalar_one_or_none()
+
+            if admin_user and admin_user.email:
+                amount = invoice.amount_due / 100  # Convert cents to dollars
+                billing_date = datetime.fromtimestamp(invoice.created).strftime('%B %d, %Y')
+
+                await email_service.send_payment_failed_email(
+                    to_email=admin_user.email,
+                    user_name=admin_user.full_name or admin_user.email,
+                    plan=subscription.plan,
+                    amount=amount,
+                    attempt_count=invoice.attempt_count,
+                    billing_date=billing_date
+                )
+                logger.info(f"Sent payment failed email to {admin_user.email}")
+        except Exception as e:
+            logger.error(f"Failed to send payment failed email: {str(e)}")
 
     async def get_subscription_by_stripe_id(self, stripe_subscription_id: str) -> Subscription:
         """
