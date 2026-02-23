@@ -16,7 +16,9 @@ class Calculation(Base):
     description = Column(Text, nullable=True)
 
     # Input data
-    hs_code = Column(String(20), ForeignKey('hs_codes.code', ondelete='SET NULL'), nullable=False, index=True)
+    # Note: hs_code is not a foreign key because code is not unique (same code can exist for multiple countries)
+    # Application should lookup using (hs_code, destination_country) pair
+    hs_code = Column(String(20), nullable=False, index=True)
     product_description = Column(Text, nullable=True)
     origin_country = Column(String(2), nullable=False)
     destination_country = Column(String(2), nullable=False)
