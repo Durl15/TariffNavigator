@@ -321,7 +321,7 @@ function CostCalculator() {
         </div>
       )}
 
-      {result && (
+      {result && (result.calculation || result.converted_calculation) && (
         <div className="mt-4 p-4 bg-gray-50 rounded">
           <div className="mb-4 pb-2 border-b">
             <h3 className="font-bold text-lg">{result.description}</h3>
@@ -339,18 +339,18 @@ function CostCalculator() {
               <span className="font-medium">{fmt((result.converted_calculation || result.calculation).cif_value)}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-gray-600">Customs Duty ({result.rates.mfn}%)</span>
+              <span className="text-gray-600">Customs Duty ({result.rates?.mfn || 0}%)</span>
               <span className="font-medium">{fmt((result.converted_calculation || result.calculation).customs_duty)}</span>
             </div>
-            {(result.converted_calculation || result.calculation).vat && (
+            {(result.converted_calculation || result.calculation).vat && (result.converted_calculation || result.calculation).vat > 0 && (
               <div className="flex justify-between">
-                <span className="text-gray-600">VAT ({result.rates.vat}%)</span>
+                <span className="text-gray-600">VAT ({result.rates?.vat || 0}%)</span>
                 <span className="font-medium">{fmt((result.converted_calculation || result.calculation).vat)}</span>
               </div>
             )}
             {(result.converted_calculation || result.calculation).consumption_tax && (result.converted_calculation || result.calculation).consumption_tax > 0 && (
               <div className="flex justify-between text-red-600">
-                <span>Consumption Tax ({result.rates.consumption}%)</span>
+                <span>Consumption Tax ({result.rates?.consumption || 0}%)</span>
                 <span className="font-medium">{fmt((result.converted_calculation || result.calculation).consumption_tax)}</span>
               </div>
             )}
