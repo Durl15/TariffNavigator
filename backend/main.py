@@ -1,11 +1,30 @@
-﻿from fastapi import FastAPI
+﻿from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from app.api.v1.api import api_router
 from app.core.config import settings
 from app.middleware.rate_limit import RateLimitMiddleware
+import logging
+import time
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 app = FastAPI(title="Tariff Navigator", version="1.0.0")
+
+# Add request logging middleware
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    logger.info(f">>> REQUEST: {request.method} {request.url.path}")
+    start_time = time.time()
+    try:
+        response = await call_next(request)
+        process_time = time.time() - start_time
+        logger.info(f"<<< RESPONSE: {request.method} {request.url.path} - Status: {response.status_code} - Time: {process_time:.2f}s")
+        return response
+    except Exception as e:
+        logger.error(f"!!! EXCEPTION in {request.url.path}: {type(e).__name__}: {str(e)}", exc_info=True)
+        raise
 
 # Secure CORS configuration - only allow specific origins
 allowed_origins = [
