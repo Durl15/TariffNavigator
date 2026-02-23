@@ -54,7 +54,9 @@ class CatalogItem(Base):
     # Product data
     sku = Column(String(100), nullable=False)
     product_name = Column(String(255), nullable=True)
-    hs_code = Column(String(20), ForeignKey('hs_codes.code', ondelete='SET NULL'), nullable=True, index=True)
+    # Note: hs_code is not a foreign key because code is not unique (same code can exist for multiple countries)
+    # Application should lookup using (hs_code, origin_country) pair
+    hs_code = Column(String(20), nullable=True, index=True)
     origin_country = Column(String(2), nullable=False)
     cogs = Column(Numeric(12, 2), nullable=False)  # Cost of goods sold
     retail_price = Column(Numeric(12, 2), nullable=False)

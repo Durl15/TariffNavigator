@@ -48,12 +48,80 @@ TariffNavigator is a full-stack web application that helps businesses calculate 
 - **Bcrypt** - Password hashing
 - **CORS** - Cross-origin resource sharing
 
-## Installation
+## 🐳 Quick Start with Docker (Recommended)
+
+The fastest way to run TariffNavigator is with Docker. No need to install Python, Node.js, or PostgreSQL manually.
+
+### Prerequisites
+- Docker Desktop 4.0+ (Windows/Mac) or Docker Engine 20.10+ (Linux)
+- Docker Compose v2.0+
+- 4GB RAM minimum
+
+### Setup Steps
+
+```bash
+# 1. Clone repository
+git clone https://github.com/yourusername/TariffNavigator.git
+cd TariffNavigator
+
+# 2. Configure environment
+cp .env.docker.example .env
+# Edit .env and add your API keys (OPENAI_API_KEY, STRIPE keys, SMTP credentials)
+
+# 3. Start all services
+docker-compose up
+```
+
+**First run takes 5-10 minutes** (downloading images, building). Subsequent runs take ~30 seconds.
+
+### Access the Application
+
+Once started:
+- **Frontend**: http://localhost:3000
+- **Backend API**: http://localhost:8000
+- **API Docs**: http://localhost:8000/docs
+
+### Default Credentials
+
+```
+Admin:
+Email: admin@test.com
+Password: admin123
+
+User:
+Email: test@test.com
+Password: password123
+```
+
+### Common Commands
+
+```bash
+# Stop services
+docker-compose down
+
+# View logs
+docker-compose logs -f
+
+# Restart services
+docker-compose restart
+
+# Rebuild after code changes
+docker-compose up --build
+```
+
+**For detailed Docker documentation**, see [DOCKER.md](./DOCKER.md)
+
+---
+
+## Installation (Manual Setup)
+
+If you prefer not to use Docker, follow these manual installation steps:
 
 ### Prerequisites
 - Python 3.10+
 - Node.js 18+
 - npm or yarn
+- PostgreSQL 15+ (or SQLite for development)
 
 ### Backend Setup
 

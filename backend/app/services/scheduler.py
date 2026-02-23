@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 # Configure job storage (persists to database)
 # Note: APScheduler's SQLAlchemyJobStore requires synchronous DB URL
 # Convert async URL to sync for job store
-scheduler_db_url = str(settings.DATABASE_URL).replace('sqlite+aiosqlite', 'sqlite')
+scheduler_db_url = str(settings.DATABASE_URL).replace('sqlite+aiosqlite', 'sqlite').replace('postgresql+asyncpg', 'postgresql')
 jobstores = {
     'default': SQLAlchemyJobStore(url=scheduler_db_url)
 }

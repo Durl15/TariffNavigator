@@ -72,7 +72,8 @@ def upgrade() -> None:
         sa.Column('updated_at', sa.DateTime(timezone=True), nullable=True),
 
         sa.ForeignKeyConstraint(['catalog_id'], ['catalogs.id'], ondelete='CASCADE'),
-        sa.ForeignKeyConstraint(['hs_code'], ['hs_codes.code'], ondelete='SET NULL'),
+        # NOTE: hs_code is NOT a foreign key because code is not unique (same code for multiple countries)
+        # Application should lookup using (hs_code, origin_country) pair
     )
 
     # Indexes for fast lookups and queries
