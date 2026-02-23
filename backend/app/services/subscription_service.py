@@ -11,7 +11,8 @@ from sqlalchemy import select, func
 from decimal import Decimal
 
 from app.models.subscription import Subscription, Payment, SubscriptionStatus
-from app.models.organization import Organization, OrganizationQuotaUsage
+from app.models.organization import Organization
+from app.models.rate_limit import OrganizationQuotaUsage
 from app.models.watchlist import Watchlist
 from app.models.calculation import Calculation
 from app.core.config import settings
