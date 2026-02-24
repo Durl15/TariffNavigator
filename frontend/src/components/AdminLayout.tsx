@@ -8,6 +8,7 @@ import {
   LogOut,
   Menu,
   X,
+  Calculator,
 } from 'lucide-react';
 
 const AdminLayout: React.FC = () => {
@@ -21,6 +22,7 @@ const AdminLayout: React.FC = () => {
   };
 
   const navItems = [
+    { path: '/', icon: Calculator, label: 'Calculator' },
     { path: '/admin', icon: LayoutDashboard, label: 'Dashboard' },
     { path: '/admin/users', icon: Users, label: 'Users' },
     { path: '/admin/organizations', icon: Building2, label: 'Organizations' },
