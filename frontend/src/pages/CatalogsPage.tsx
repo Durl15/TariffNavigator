@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { Upload, Folder, Trash2, Edit, BarChart3, Plus } from 'lucide-react'
 import { getCatalogs, deleteCatalog, type CatalogListItem } from '../services/api'
 import toast from 'react-hot-toast'
+import Navigation from '../components/Navigation'
 import CatalogUploadModal from '../components/CatalogUploadModal'
 
 export default function CatalogsPage() {
@@ -40,14 +41,24 @@ export default function CatalogsPage() {
     navigate(`/catalogs/${catalogId}/impact`)
   }
 
+  const handleLogout = () => {
+    localStorage.removeItem('auth_token');
+    window.location.href = '/';
+  };
+
+  const isAuthenticated = !!localStorage.getItem('auth_token');
+
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8">
-      {/* Header */}
-      <div className="mb-8">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Product Catalogs</h1>
-            <p className="text-gray-600 mt-2">
+    <div className="min-h-screen bg-gray-50">
+      <Navigation isAuthenticated={isAuthenticated} onLogout={handleLogout} />
+
+      <div className="max-w-7xl mx-auto px-4 py-8">
+        {/* Header */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">Product Catalogs</h1>
+              <p className="text-gray-600 mt-2">
               Upload and analyze tariff impact across your product portfolio
             </p>
           </div>
@@ -114,6 +125,7 @@ export default function CatalogsPage() {
           }}
         />
       )}
+      </div>
     </div>
   )
 }

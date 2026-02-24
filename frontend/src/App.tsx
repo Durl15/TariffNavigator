@@ -1,7 +1,8 @@
 ﻿import { useState, useEffect } from 'react'
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
+import { BrowserRouter as Router, Routes, Route, useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import './index.css'
+import Navigation from './components/Navigation'
 import AdminLayout from './components/AdminLayout'
 import Dashboard from './pages/admin/Dashboard'
 import Users from './pages/admin/Users'
@@ -202,8 +203,6 @@ function CostCalculator() {
 
   return (
     <div>
-      <h2 className="text-xl font-semibold mb-4">Tariff Calculator</h2>
-
       {/* Search Filters */}
       <SearchFilters
         onFilterChange={(filters) => {
@@ -451,29 +450,22 @@ function CostCalculator() {
 
 // Main calculator page component
 function CalculatorPage() {
+  const handleLogout = () => {
+    localStorage.removeItem('auth_token');
+    window.location.href = '/';
+  };
+
+  const isAuthenticated = !!localStorage.getItem('auth_token');
+
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
-      <div className="max-w-4xl mx-auto">
-        <div className="flex justify-between items-center mb-2">
-          <h1 className="text-3xl font-bold text-blue-600">Tariff Navigator</h1>
-          <div className="flex items-center gap-4">
-            <NotificationBell />
-            <a
-              href="/login"
-              className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors text-sm font-medium"
-            >
-              Login
-            </a>
-            <a
-              href="/dashboard"
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
-            >
-              Dashboard
-            </a>
-          </div>
+    <div className="min-h-screen bg-gray-50">
+      <Navigation isAuthenticated={isAuthenticated} onLogout={handleLogout} />
+
+      <div className="max-w-6xl mx-auto p-8">
+        <div className="mb-6">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Tariff Calculator</h1>
+          <p className="text-gray-600">AI-powered tariff calculator with multi-currency support</p>
         </div>
-        <p className="text-gray-600 mb-6">AI-powered tariff calculator with multi-currency support</p>
-        <p className="text-xs text-gray-400 mb-4">v2.0.3 - Currency conversion enabled</p>
 
         <div className="bg-white rounded-lg shadow-md p-6">
           <CostCalculator />

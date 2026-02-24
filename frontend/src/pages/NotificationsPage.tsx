@@ -7,6 +7,7 @@ import {
   deleteNotification,
   type Notification,
 } from '../services/api'
+import Navigation from '../components/Navigation'
 import '../styles/NotificationsPage.css'
 
 const NotificationsPage: React.FC = () => {
@@ -130,9 +131,18 @@ const NotificationsPage: React.FC = () => {
     }
   }
 
+  const handleLogout = () => {
+    localStorage.removeItem('auth_token');
+    window.location.href = '/';
+  };
+
+  const isAuthenticated = !!localStorage.getItem('auth_token');
+
   return (
-    <div className="notifications-page">
-      <div className="notifications-container">
+    <>
+      <Navigation isAuthenticated={isAuthenticated} onLogout={handleLogout} />
+      <div className="notifications-page">
+        <div className="notifications-container">
         <div className="notifications-header">
           <h1>Notifications</h1>
           {unreadCount > 0 && (
@@ -327,6 +337,7 @@ const NotificationsPage: React.FC = () => {
         )}
       </div>
     </div>
+    </>
   )
 }
 

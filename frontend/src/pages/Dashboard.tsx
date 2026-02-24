@@ -3,6 +3,7 @@ import { Calculator, TrendingUp, Clock, Globe, FileDown } from 'lucide-react'
 import { getPublicStats, getPopularHSCodes, exportCSV, downloadBlob, type PublicStats, type PopularHSCode } from '../services/api'
 import toast from 'react-hot-toast'
 import { useState } from 'react'
+import Navigation from '../components/Navigation'
 import NotificationBell from '../components/NotificationBell'
 
 export default function Dashboard() {
@@ -37,17 +38,24 @@ export default function Dashboard() {
     }
   }
 
+  const handleLogout = () => {
+    localStorage.removeItem('auth_token');
+    window.location.href = '/';
+  };
+
+  const isAuthenticated = !!localStorage.getItem('auth_token');
+
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-8 flex justify-between items-start">
-          <div>
+    <div className="min-h-screen bg-gray-50">
+      <Navigation isAuthenticated={isAuthenticated} onLogout={handleLogout} />
+
+      <div className="py-8 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto">
+          {/* Header */}
+          <div className="mb-8">
             <h1 className="text-3xl font-bold text-gray-900">Your Tariff Dashboard</h1>
             <p className="mt-2 text-gray-600">Track your calculations and explore tariff insights</p>
           </div>
-          <NotificationBell />
-        </div>
 
         {/* Stats Grid */}
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4 mb-8">
@@ -201,6 +209,7 @@ export default function Dashboard() {
           </div>
         )}
       </div>
+    </div>
     </div>
   )
 }
