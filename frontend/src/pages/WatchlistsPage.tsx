@@ -8,6 +8,7 @@ import {
   type Watchlist,
   type WatchlistCreate,
 } from '../services/api'
+import Navigation from '../components/Navigation'
 import '../styles/WatchlistsPage.css'
 
 const WatchlistsPage: React.FC = () => {
@@ -159,9 +160,18 @@ const WatchlistsPage: React.FC = () => {
     })
   }
 
+  const handleLogout = () => {
+    localStorage.removeItem('auth_token');
+    window.location.href = '/';
+  };
+
+  const isAuthenticated = !!localStorage.getItem('auth_token');
+
   return (
-    <div className="watchlists-page">
-      <div className="watchlists-container">
+    <>
+      <Navigation isAuthenticated={isAuthenticated} onLogout={handleLogout} />
+      <div className="watchlists-page">
+        <div className="watchlists-container">
         <div className="watchlists-header">
           <h1>Watchlists</h1>
           <button
@@ -395,6 +405,7 @@ const WatchlistsPage: React.FC = () => {
         )}
       </div>
     </div>
+    </>
   )
 }
 
