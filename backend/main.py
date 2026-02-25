@@ -26,24 +26,12 @@ async def log_requests(request: Request, call_next):
         logger.error(f"!!! EXCEPTION in {request.url.path}: {type(e).__name__}: {str(e)}", exc_info=True)
         raise
 
-# Secure CORS configuration - only allow specific origins
-allowed_origins = [
-    "https://tariffnavigator.vercel.app",
-    "https://tariffnavigator-backend.onrender.com",
-]
-
-# Add localhost for development
-if settings.ENVIRONMENT == "development":
-    # Add all common localhost ports
-    for port in range(3000, 3020):  # Ports 3000-3019
-        allowed_origins.append(f"http://localhost:{port}")
-        allowed_origins.append(f"http://127.0.0.1:{port}")
-    allowed_origins.append("http://localhost:5173")
-    allowed_origins.append("http://localhost:8080")
-
+# CORS configuration - reads from CORS_ORIGINS environment variable
+# In production, set: CORS_ORIGINS=https://yourfrontend.com,https://anotherdomain.com
+# The Settings class automatically parses comma-separated values into a list
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=allowed_origins,
+    allow_origins=settings.CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     allow_headers=["*"],
