@@ -1,6 +1,7 @@
 ﻿from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import field_validator
 from functools import lru_cache
-from typing import List
+from typing import List, Union
 
 
 class Settings(BaseSettings):
@@ -17,8 +18,17 @@ class Settings(BaseSettings):
     SECRET_KEY: str = "your-secret-key-change-in-production"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24
 
-    # CORS
-    CORS_ORIGINS: List[str] = ["http://localhost:3000", "http://localhost:5173", "http://localhost:8080"]
+    # CORS - accepts comma-separated string or list
+    CORS_ORIGINS: Union[List[str], str] = "http://localhost:3000,http://localhost:5173,http://localhost:8080"
+
+    @field_validator('CORS_ORIGINS', mode='before')
+    @classmethod
+    def parse_cors_origins(cls, v):
+        """Parse CORS_ORIGINS from comma-separated string or list"""
+        if isinstance(v, str):
+            # Split by comma and strip whitespace
+            return [origin.strip() for origin in v.split(',') if origin.strip()]
+        return v
 
     # Email Settings (Phase 2)
     SMTP_HOST: str = "smtp.gmail.com"
