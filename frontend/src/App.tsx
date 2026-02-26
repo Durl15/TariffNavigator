@@ -25,6 +25,7 @@ import SavedCalculationsSidebar from './components/SavedCalculationsSidebar'
 import SaveCalculationModal from './components/SaveCalculationModal'
 import NotificationBell from './components/NotificationBell'
 import { Bookmark, Save } from 'lucide-react'
+import { ChatBot } from './components/ChatBot'
 
 // COST CALCULATOR COMPONENT - With Autocomplete, FTA, and Currency
 function CostCalculator() {
@@ -516,6 +517,9 @@ function App() {
           <Route path="audit-logs" element={<AuditLogs />} />
         </Route>
       </Routes>
+
+      {/* AI Chatbot - Available on all pages */}
+      <ChatBot />
     </Router>
   )
 }
