@@ -16,6 +16,7 @@ from app.api.deps import get_current_user
 from app.models.user import User
 from app.models.calculation import Calculation
 from app.services.pdf_generator import generate_tariff_pdf
+from app.services.pdf_generator_simple import generate_compliance_report_pdf
 from app.services.csv_generator import generate_calculations_csv, generate_comparison_csv
 from app.schemas.comparison import ComparisonRequest
 from app.api.v1.endpoints.comparisons import compare_calculations
@@ -393,4 +394,53 @@ async def export_comparison_pdf(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to generate comparison PDF: {str(e)}"
+        )
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# COMPLIANCE TOOL REPORTS
+# ─────────────────────────────────────────────────────────────────────────────
+
+class ComplianceReportRequest(BaseModel):
+    """Request model for compliance tool PDF reports."""
+    report_type: str  # drawback | supply_chain | hts_audit | usmca | cashflow | sourcing | scenario
+    title: str
+    data: dict         # The tool result payload
+    metadata: Optional[dict] = None  # User-supplied context (hts_code, product_description, etc.)
+
+
+@router.post("/compliance-pdf")
+async def export_compliance_pdf(
+    request: ComplianceReportRequest,
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Generate a branded PDF report for any compliance tool result.
+    Accepts the raw JSON from drawback, supply_chain, hts_audit, usmca,
+    cashflow, sourcing, or scenario endpoints and renders a professional report.
+    """
+    valid_types = {"drawback", "supply_chain", "hts_audit", "usmca", "cashflow", "sourcing", "scenario"}
+    if request.report_type not in valid_types:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid report_type. Must be one of: {', '.join(valid_types)}"
+        )
+    try:
+        pdf_bytes = generate_compliance_report_pdf(
+            report_type=request.report_type,
+            title=request.title,
+            data=request.data,
+            metadata=request.metadata or {}
+        )
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"tariffnavigator_{request.report_type}_{timestamp}.pdf"
+        return StreamingResponse(
+            BytesIO(pdf_bytes),
+            media_type="application/pdf",
+            headers={"Content-Disposition": f"attachment; filename={filename}"}
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to generate compliance report: {str(e)}"
         )

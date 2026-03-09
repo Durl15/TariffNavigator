@@ -9,3 +9,4 @@ from app.models.notification import Notification
 from app.models.watchlist import Watchlist
 from app.models.tariff_change import TariffChangeLog
 from app.models.subscription import Subscription, Payment, SubscriptionStatus
+from app.models.tool_analysis import ToolAnalysis

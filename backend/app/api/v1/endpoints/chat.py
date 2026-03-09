@@ -34,39 +34,48 @@ class ChatResponse(BaseModel):
     suggested_actions: Optional[List[dict]] = None
 
 
-SYSTEM_PROMPT = """You are TariffNavigator AI Assistant, an expert in international trade, customs duties, and HS codes.
+SYSTEM_PROMPT = """You are TariffNavigator AI — an expert in U.S. import tariffs, customs compliance, and trade finance, built for American small business importers.
 
-Your capabilities:
-1. **HS Code Identification**: Help users find the correct HS code for their products
-2. **Tariff Explanations**: Explain customs duties, VAT rates, and trade regulations
-3. **App Guidance**: Help users navigate and use TariffNavigator features
+## Current U.S. Tariff Landscape (2026)
+- China (CN): ~39.5% effective rate (25% Section 301 + 14.5% IEEPA reciprocal)
+- Mexico/Canada: 0% under USMCA for qualifying goods; 25% IEEPA if non-qualifying
+- Vietnam, Thailand, Malaysia: MFN rates (~8-12%), but transshipment scrutiny for Chinese-origin components
+- South Korea: 0% under KORUS FTA
+- India: MFN ~8% (GSP expired 2019)
+- USMCA renegotiation due July 2026 — watch for changes
 
-Key Features of TariffNavigator:
-- Calculator: Calculate import duties for China (CN) and European Union (EU)
-- Watchlists: Monitor tariff changes for specific HS codes (Pro feature)
-- Catalogs: Bulk analyze product catalogs (Pro feature)
-- Dashboard: View calculation history and statistics
+## TariffNavigator Platform Tools (route users to these)
+1. **Calculator** → /calculator — Stacked duty rate lookup (Section 301 + IEEPA + USMCA + AD/CVD)
+2. **Cash Flow Forecaster** → /cashflow — Duty cash obligation at port vs. revenue timing
+3. **Drawback Finder** → /drawback — Recover up to 99% of duties paid (unused merchandise, manufacturing)
+4. **USMCA Checker** → /usmca-check — Verify 0% eligibility for Mexico/Canada goods
+5. **Supply Chain Scanner** → /supply-chain — Detect transshipment risk and Section 301 exposure from Chinese components
+6. **HTS Code Audit** → /hts-audit — Catch supplier misclassifications causing overpayment
+7. **Alternative Sourcing Finder** → /sourcing — Rank 13 countries by tariff rate for any HTS code
+8. **Scenario Planner** → /scenarios — "What if China snaps back to 145%?" against real catalog data
+9. **Catalogs** → /catalogs — Upload product CSV for portfolio-wide impact analysis
+10. **Watchlists** → /watchlists — Monitor rate changes for specific HTS codes and countries
 
-Common Tariff Rates:
-- China: Electronics (HS 8517, 8471) = 0% duty + 13% VAT
-- China: Cars (HS 8703) = 15% duty + 13% VAT
-- EU: Cars (HS 8703) = 10% duty + 20% VAT
-- EU: Footwear (HS 6402) = 17% duty + 20% VAT
+## Your Job
+- Answer tariff questions accurately using current 2026 rates
+- When user describes a problem, identify which tool solves it and route them there
+- Suggest HTS codes when user describes products
+- Give specific, actionable advice — not generic disclaimers
+- Keep responses under 200 words unless a detailed explanation is needed
+- Use dollar figures when possible ("at 39.5% that's $19,750 on a $50K shipment")
 
-How to respond:
-- Be concise and helpful
-- When users describe products, suggest likely HS codes
-- Explain tariff calculations clearly
-- Guide users to relevant app features
-- Use simple language, avoid jargon
+## Tool Routing Rules
+- "how much duty on..." → Calculator + give rough estimate
+- "cash flow" / "duty at port" / "need cash" → Cash Flow Forecaster
+- "get money back" / "refund" / "drawback" → Drawback Finder
+- "Mexico" / "Canada" / "USMCA" / "certificate of origin" → USMCA Checker
+- "Vietnam" / "transshipment" / "Chinese components" / "CBP penalty" → Supply Chain Scanner
+- "wrong HTS" / "overpaying" / "supplier gave me" / "misclassified" → HTS Code Audit
+- "alternative sourcing" / "cheaper country" / "switch from China" → Alternative Sourcing Finder
+- "what if" / "scenario" / "China at 145%" / "IEEPA struck down" → Scenario Planner
+- "upload products" / "my catalog" / "all my SKUs" → Catalogs
 
-If user asks to calculate tariffs, tell them to:
-1. Use the Calculator page
-2. Search for their product
-3. Enter the CIF value
-4. Click Calculate
-
-Always be friendly, professional, and accurate."""
+Always be direct, specific, and financially concrete. Small businesses need to act — not just understand."""
 
 
 async def search_hs_codes(db: AsyncSession, query: str, country: str = "CN", limit: int = 5) -> List[dict]:
@@ -124,36 +133,53 @@ async def chat_with_assistant(
         # Add current user message
         messages.append({"role": "user", "content": request.message})
 
-        # Check if user is asking about a product (potential HS code search)
-        product_keywords = ["what is", "hs code", "tariff for", "importing", "import", "product", "item"]
-        should_search_hs = any(keyword in request.message.lower() for keyword in product_keywords)
-
-        # Search HS codes if relevant
-        hs_context = ""
+        msg_lower = request.message.lower()
         suggested_actions = []
+        hs_context = ""
 
-        if should_search_hs:
-            # Extract potential product name from message
-            search_query = request.message.lower()
-            for keyword in ["hs code for", "tariff for", "importing", "import"]:
-                if keyword in search_query:
-                    search_query = search_query.split(keyword)[-1].strip()
+        # ── Tool routing: detect intent and pre-populate suggested actions ──
+        TOOL_ROUTES = [
+            (["cash flow", "duty at port", "cash gap", "cash before", "port payment", "cash needed"], "/cashflow", "Open Cash Flow Forecaster"),
+            (["drawback", "get money back", "refund my duty", "recover duties", "99% back"], "/drawback", "Open Drawback Finder"),
+            (["usmca", "certificate of origin", "mexico qualify", "canada qualify", "0% from mexico"], "/usmca-check", "Check USMCA Eligibility"),
+            (["transshipment", "chinese components", "vietnam factory", "cbp penalty", "supply chain risk"], "/supply-chain", "Open Supply Chain Scanner"),
+            (["wrong hts", "overpaying", "misclassified", "supplier code", "hts audit", "wrong code"], "/hts-audit", "Run HTS Audit"),
+            (["cheaper country", "alternative sourcing", "switch from china", "lower tariff country", "sourcing alternative"], "/sourcing", "Open Sourcing Finder"),
+            (["what if", "scenario", "145%", "ieepa struck", "if tariffs", "usmca fails", "model impact"], "/scenarios", "Open Scenario Planner"),
+            (["upload catalog", "my products", "all my skus", "portfolio impact", "bulk analysis"], "/catalogs", "Go to Catalogs"),
+            (["watchlist", "alert", "notify me", "monitor"], "/watchlists", "Manage Watchlists"),
+            (["calculate", "how much duty", "tariff rate", "hs code"], "/calculator", "Open Calculator"),
+        ]
+
+        for keywords, path, label in TOOL_ROUTES:
+            if any(kw in msg_lower for kw in keywords):
+                suggested_actions.append({"type": "tool_link", "label": label, "url": path})
+                if len(suggested_actions) >= 2:
                     break
 
-            # Search both CN and EU
+        # ── HS code lookup if product mentioned ──
+        product_keywords = ["hs code", "tariff for", "import", "what is the code", "classify"]
+        should_search_hs = any(kw in msg_lower for kw in product_keywords)
+
+        if should_search_hs:
+            search_query = msg_lower
+            for kw in ["hs code for", "tariff for", "importing", "import", "classify"]:
+                if kw in search_query:
+                    search_query = search_query.split(kw)[-1].strip()
+                    break
             cn_codes = await search_hs_codes(db, search_query, "CN", 3)
-
             if cn_codes:
-                hs_context = f"\n\nRelevant HS Codes found:\n"
+                hs_context = "\n\nRelevant HS Codes in database:\n"
                 for code in cn_codes:
-                    hs_context += f"- {code['code']}: {code['description']} (CN: {code['mfn_rate']}% duty, {code['vat_rate']}% VAT)\n"
-                    suggested_actions.append({
-                        "type": "calculate",
-                        "label": f"Calculate for {code['code']}",
-                        "data": {"hs_code": code['code'], "country": "CN"}
-                    })
+                    hs_context += f"- {code['code']}: {code['description']} (MFN: {code['mfn_rate']}%)\n"
+                    if not any(a.get("url") == "/calculator" for a in suggested_actions):
+                        suggested_actions.append({
+                            "type": "calculate",
+                            "label": f"Calculate tariff for {code['code']}",
+                            "data": {"hs_code": code['code'], "country": "CN"},
+                            "url": "/calculator"
+                        })
 
-        # Add HS context to last message if found
         if hs_context:
             messages[-1]["content"] += hs_context
 

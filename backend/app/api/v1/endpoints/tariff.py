@@ -1,14 +1,84 @@
 import httpx
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, func
 from typing import Optional
 from pydantic import BaseModel, Field, field_validator
 import re
+from datetime import datetime
 from app.db.session import get_db
 from app.models.hs_code import HSCode
+from app.models.calculation import Calculation
+from app.models.user import User
+from app.services.tariff_stacking import calculate_us_import, ORIGIN_COUNTRIES
 
 router = APIRouter()
+security = HTTPBearer(auto_error=False)
+
+# Free tier monthly lookup limit
+FREE_TIER_LIMIT = 10
+
+# Tier limits — None means unlimited
+TIER_LIMITS: dict[str, Optional[int]] = {
+    "free": FREE_TIER_LIMIT,
+    "user": FREE_TIER_LIMIT,
+    "viewer": 5,
+    "pro": None,
+    "enterprise": None,
+    "consultant": None,
+    "admin": None,
+    "superadmin": None,
+}
+
+
+async def _get_optional_user(
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
+    db: AsyncSession = Depends(get_db),
+) -> Optional[User]:
+    """Return authenticated user if token present, else None."""
+    if not credentials:
+        return None
+    try:
+        from app.services.auth import get_current_user_from_token
+        return await get_current_user_from_token(credentials.credentials, db)
+    except Exception:
+        return None
+
+
+async def _check_free_tier(user: Optional[User], db: AsyncSession) -> int:
+    """
+    Return number of lookups used this month for authenticated free-tier users.
+    Raises HTTP 429 if limit exceeded.
+    Returns remaining lookups (None = unlimited).
+    """
+    if user is None:
+        return FREE_TIER_LIMIT  # unauthenticated: rely on IP rate limiting
+
+    limit = TIER_LIMITS.get(user.role)
+    if limit is None:
+        return 9999  # paid tier — unlimited
+
+    month_start = datetime.utcnow().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    result = await db.execute(
+        select(func.count(Calculation.id)).where(
+            Calculation.user_id == user.id,
+            Calculation.created_at >= month_start,
+        )
+    )
+    used = result.scalar() or 0
+
+    if used >= limit:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail={
+                "message": f"Monthly lookup limit of {limit} reached for your free plan.",
+                "used": used,
+                "limit": limit,
+                "upgrade_url": "/pricing",
+            },
+        )
+    return limit - used
 
 # Request validation models
 class CalculateRequest(BaseModel):
@@ -322,3 +392,112 @@ async def get_exchange_rate(
     }
 
 # Removed duplicate calculate endpoint - currency conversion now integrated into main /calculate endpoint above
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# US IMPORT CALCULATOR — Stacked tariff engine
+# ─────────────────────────────────────────────────────────────────────────────
+
+@router.get("/origin-countries")
+async def get_origin_countries():
+    """Return list of supported origin countries for the US import calculator."""
+    return ORIGIN_COUNTRIES
+
+
+@router.post("/us-import")
+async def calculate_us_import_tariff(
+    hts_code: str = Query(..., description="US HTS code (4-10 digits)"),
+    origin_country: str = Query(..., description="Country of origin code (CN, MX, CA, VN, KR, etc.)"),
+    cif_value: float = Query(..., gt=0, description="CIF value in USD"),
+    usmca_qualifying: bool = Query(default=True, description="Does the product qualify for USMCA? (MX/CA only)"),
+    db: AsyncSession = Depends(get_db),
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
+):
+    """
+    Calculate total US import cost with full tariff stacking.
+
+    Applies all applicable programs:
+    - Base MFN rate (US Harmonized Tariff Schedule)
+    - USMCA / KORUS / FTA preferential rates
+    - Section 232 (steel, aluminum, autos)
+    - Section 301 (China unfair trade practices)
+    - IEEPA reciprocal tariffs (China, MX/CA non-qualifying)
+    """
+    # Clean HTS code
+    clean_code = hts_code.replace(".", "").replace(" ", "")
+    if not re.match(r'^\d{4,10}$', clean_code):
+        raise HTTPException(status_code=422, detail="HTS code must be 4-10 digits")
+
+    origin = origin_country.upper()
+
+    # Optional auth + free tier check
+    user = await _get_optional_user(credentials, db)
+    await _check_free_tier(user, db)
+
+    # Look up HTS code in DB for description and DB MFN rate
+    db_code = None
+    description = f"HTS {hts_code}"
+    db_mfn_rate = None
+
+    # Try CN table first (largest dataset), then EU
+    for search_country in ("CN", "EU"):
+        result = await db.execute(
+            select(HSCode).where(
+                HSCode.country == search_country,
+                HSCode.code == clean_code,
+            )
+        )
+        db_code = result.scalar_one_or_none()
+        if db_code:
+            description = db_code.description
+            db_mfn_rate = float(db_code.mfn_rate) if db_code.mfn_rate else None
+            break
+
+    # Run stacking engine
+    stacked = calculate_us_import(
+        hts_code=clean_code,
+        origin_country=origin,
+        cif_value=cif_value,
+        db_mfn_rate=db_mfn_rate,
+        usmca_qualifying=usmca_qualifying,
+    )
+
+    return {
+        "hs_code": hts_code,
+        "description": description,
+        "origin_country": origin,
+        "cif_value": cif_value,
+        "mode": "us_import",
+        **stacked,
+    }
+
+
+@router.get("/us-import/usage")
+async def get_lookup_usage(
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
+    db: AsyncSession = Depends(get_db),
+):
+    """Return current month lookup usage for authenticated users."""
+    user = await _get_optional_user(credentials, db)
+    if not user:
+        return {"authenticated": False, "used": 0, "limit": FREE_TIER_LIMIT, "unlimited": False}
+
+    limit = TIER_LIMITS.get(user.role)
+    month_start = datetime.utcnow().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    result = await db.execute(
+        select(func.count(Calculation.id)).where(
+            Calculation.user_id == user.id,
+            Calculation.created_at >= month_start,
+        )
+    )
+    used = result.scalar() or 0
+
+    return {
+        "authenticated": True,
+        "role": user.role,
+        "used": used,
+        "limit": limit,
+        "unlimited": limit is None,
+        "remaining": (limit - used) if limit is not None else None,
+        "upgrade_url": "/pricing" if limit is not None and used >= int(limit * 0.8) else None,
+    }

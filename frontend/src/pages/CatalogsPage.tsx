@@ -42,11 +42,11 @@ export default function CatalogsPage() {
   }
 
   const handleLogout = () => {
-    localStorage.removeItem('auth_token');
+    localStorage.removeItem('token');
     window.location.href = '/';
   };
 
-  const isAuthenticated = !!localStorage.getItem('auth_token');
+  const isAuthenticated = !!localStorage.getItem('token');
 
   return (
     <div className="min-h-screen bg-gray-50">

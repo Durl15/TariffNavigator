@@ -888,3 +888,123 @@ export async function toggleWatchlist(id: string): Promise<Watchlist> {
   })
   return response.data
 }
+
+// ============================================================================
+// SMB SURVIVAL TOOLS — Action List
+// ============================================================================
+
+export interface Action {
+  id: string
+  title: string
+  description: string
+  category: string
+  estimated_dollar_impact: number | null
+  urgency: string
+  deadline: string | null
+  cta_label: string
+  cta_url: string
+  icon: string
+}
+
+export interface ActionListResponse {
+  actions: Action[]
+  total_opportunity: number
+  generated_at: string
+  summary: string
+}
+
+export async function getActionList(): Promise<ActionListResponse> {
+  const response = await api.get('/action-list', {
+    headers: {
+      'Authorization': `Bearer ${localStorage.getItem('token')}`,
+    },
+  })
+  return response.data
+}
+
+// ── Tool Analyses ──────────────────────────────────────────────────────────
+
+export interface AnalysisRecord {
+  id: string
+  tool_type: string
+  title: string
+  form_data: Record<string, unknown> | null
+  result_data: Record<string, unknown>
+  created_at: string
+}
+
+export interface UserProfile {
+  id: string
+  email: string
+  full_name: string | null
+  company_name: string | null
+  role: string
+  created_at: string | null
+  last_login_at: string | null
+  usage: {
+    monthly_calculations: number
+    lookup_limit: number | null
+    saved_analyses: number
+  }
+}
+
+export async function saveAnalysis(
+  tool_type: string,
+  title: string,
+  result_data: object,
+  form_data?: object
+): Promise<AnalysisRecord> {
+  const response = await api.post('/analyses', { tool_type, title, result_data, form_data }, {
+    headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+  })
+  return response.data
+}
+
+export async function getAnalyses(tool_type?: string): Promise<AnalysisRecord[]> {
+  const params = tool_type ? { tool_type } : {}
+  const response = await api.get('/analyses', {
+    params,
+    headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+  })
+  return response.data
+}
+
+export async function deleteAnalysis(id: string): Promise<void> {
+  await api.delete(`/analyses/${id}`, {
+    headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+  })
+}
+
+export async function getProfile(): Promise<UserProfile> {
+  const response = await api.get('/auth/me', {
+    headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+  })
+  return response.data
+}
+
+export async function updateProfile(data: { full_name?: string; company_name?: string }): Promise<void> {
+  await api.put('/auth/me', data, {
+    headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+  })
+}
+
+// Compliance PDF export
+export async function exportCompliancePDF(
+  reportType: string,
+  title: string,
+  data: object,
+  metadata?: object
+): Promise<Blob> {
+  const response = await api.post('/export/compliance-pdf', {
+    report_type: reportType,
+    title,
+    data,
+    metadata: metadata || {},
+  }, {
+    responseType: 'blob',
+    headers: {
+      'Authorization': `Bearer ${localStorage.getItem('token')}`,
+    },
+  })
+  return response.data
+}

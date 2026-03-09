@@ -9,6 +9,7 @@ import Users from './pages/admin/Users'
 import Organizations from './pages/admin/Organizations'
 import AuditLogs from './pages/admin/AuditLogs'
 import Login from './pages/Login'
+import LandingPage from './pages/LandingPage'
 import UserDashboard from './pages/Dashboard'
 import ComparisonPage from './pages/ComparisonPage'
 import FTAWizardPage from './pages/FTAWizardPage'
@@ -19,6 +20,15 @@ import WatchlistsPage from './pages/WatchlistsPage'
 import Pricing from './pages/Pricing'
 import SubscriptionSuccess from './pages/SubscriptionSuccess'
 import Billing from './pages/Billing'
+import CashFlowPage from './pages/CashFlowPage'
+import DrawbackPage from './pages/DrawbackPage'
+import SupplyChainPage from './pages/SupplyChainPage'
+import HTSAuditPage from './pages/HTSAuditPage'
+import UsmcaPage from './pages/UsmcaPage'
+import SourcingPage from './pages/SourcingPage'
+import ScenarioPage from './pages/ScenarioPage'
+import AccountPage from './pages/AccountPage'
+import SavedPage from './pages/SavedPage'
 import { exportPDF, downloadBlob, getCalculation } from './services/api'
 import SearchFilters, { type SearchFilterValues } from './components/SearchFilters'
 import SavedCalculationsSidebar from './components/SavedCalculationsSidebar'
@@ -26,6 +36,8 @@ import SaveCalculationModal from './components/SaveCalculationModal'
 import NotificationBell from './components/NotificationBell'
 import { Bookmark, Save } from 'lucide-react'
 import { ChatBot } from './components/ChatBot'
+import { OnboardingModal } from './components/OnboardingModal'
+import { UsImportCalculator } from './components/UsImportCalculator'
 
 // COST CALCULATOR COMPONENT - With Autocomplete, FTA, and Currency
 function CostCalculator() {
@@ -426,7 +438,7 @@ function CostCalculator() {
       {/* Floating Saved Calculations Button */}
       <button
         onClick={() => setSidebarOpen(!sidebarOpen)}
-        className="fixed bottom-6 right-6 bg-indigo-600 text-white p-4 rounded-full shadow-lg hover:bg-indigo-700 transition-all hover:scale-110 z-40"
+        className="fixed bottom-6 right-24 bg-indigo-600 text-white p-4 rounded-full shadow-lg hover:bg-indigo-700 transition-all hover:scale-110 z-40"
         aria-label="Saved Calculations"
       >
         <Bookmark size={24} />
@@ -451,26 +463,69 @@ function CostCalculator() {
 
 // Main calculator page component
 function CalculatorPage() {
+  const [mode, setMode] = useState<'us-import' | 'export'>('us-import')
   const handleLogout = () => {
-    localStorage.removeItem('auth_token');
+    localStorage.removeItem('token');
     window.location.href = '/';
   };
 
-  const isAuthenticated = !!localStorage.getItem('auth_token');
+  const isAuthenticated = !!localStorage.getItem('token');
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 font-sans">
       <Navigation isAuthenticated={isAuthenticated} onLogout={handleLogout} />
 
-      <div className="max-w-6xl mx-auto p-8">
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Tariff Calculator</h1>
-          <p className="text-gray-600">AI-powered tariff calculator with multi-currency support</p>
+      {/* Page header */}
+      <div className="bg-white border-b border-gray-200">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <div className="flex items-start justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-brand-navy">Tariff Calculator</h1>
+              <p className="text-gray-500 text-sm mt-0.5">
+                Full tariff stacking — Section 301, IEEPA, Section 232, USMCA
+              </p>
+            </div>
+            <span className="hidden sm:inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-brand-teal/10 text-brand-teal border border-brand-teal/20">
+              2026 Rates
+            </span>
+          </div>
+
+          {/* Mode tabs */}
+          <div className="flex mt-4 bg-gray-100 rounded-xl p-1 max-w-sm">
+            <button
+              onClick={() => setMode('us-import')}
+              className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-all ${
+                mode === 'us-import'
+                  ? 'bg-brand-navy text-white shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              US Import
+            </button>
+            <button
+              onClick={() => setMode('export')}
+              className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-all ${
+                mode === 'export'
+                  ? 'bg-brand-navy text-white shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              Export (CN/EU)
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="bg-white rounded-xl shadow-card border border-gray-100 p-6 sm:p-8">
+          {mode === 'us-import' ? <UsImportCalculator /> : <CostCalculator />}
         </div>
 
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <CostCalculator />
-        </div>
+        <footer className="mt-10 py-4 border-t border-gray-200">
+          <p className="text-center text-xs text-gray-400">
+            DJ AI Business Consultant • Syracuse, NY • Transforming Business, Rising Above the Challenges
+          </p>
+        </footer>
       </div>
     </div>
   )
@@ -481,8 +536,11 @@ function App() {
   return (
     <Router>
       <Routes>
+        {/* Landing page */}
+        <Route path="/" element={<LandingPage />} />
+
         {/* Main calculator route */}
-        <Route path="/" element={<CalculatorPage />} />
+        <Route path="/calculator" element={<CalculatorPage />} />
 
         {/* User dashboard route */}
         <Route path="/dashboard" element={<UserDashboard />} />
@@ -506,6 +564,19 @@ function App() {
         <Route path="/billing" element={<Billing />} />
         <Route path="/subscription/success" element={<SubscriptionSuccess />} />
 
+        {/* SMB Survival Tools */}
+        <Route path="/cashflow" element={<CashFlowPage />} />
+        <Route path="/drawback" element={<DrawbackPage />} />
+        <Route path="/supply-chain" element={<SupplyChainPage />} />
+        <Route path="/hts-audit" element={<HTSAuditPage />} />
+        <Route path="/usmca-check" element={<UsmcaPage />} />
+        <Route path="/sourcing" element={<SourcingPage />} />
+        <Route path="/scenarios" element={<ScenarioPage />} />
+
+        {/* Account & saved analyses */}
+        <Route path="/account" element={<AccountPage />} />
+        <Route path="/saved" element={<SavedPage />} />
+
         {/* Login route */}
         <Route path="/login" element={<Login />} />
 
@@ -520,6 +591,9 @@ function App() {
 
       {/* AI Chatbot - Available on all pages */}
       <ChatBot />
+
+      {/* Onboarding wizard - shown once to new users */}
+      <OnboardingModal />
     </Router>
   )
 }

@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.api.v1.endpoints import tariff, export, stats, calculations, comparisons, catalogs, watchlists, notifications, subscriptions, webhooks, chat
+from app.api.v1.endpoints import tariff, export, stats, calculations, comparisons, catalogs, watchlists, notifications, subscriptions, webhooks, chat, cashflow, compliance_tools, action_list, sourcing, scenarios, analyses
 from app.api.endpoints import auth, admin
 
 api_router = APIRouter()
@@ -16,3 +16,9 @@ api_router.include_router(notifications.router, prefix="/notifications", tags=["
 api_router.include_router(subscriptions.router, prefix="/subscriptions", tags=["subscriptions"])
 api_router.include_router(webhooks.router, prefix="/webhooks", tags=["webhooks"])
 api_router.include_router(chat.router, prefix="/chat", tags=["chat"])
+api_router.include_router(cashflow.router, prefix="/cashflow", tags=["cashflow"])
+api_router.include_router(compliance_tools.router, prefix="/compliance", tags=["compliance"])
+api_router.include_router(action_list.router, prefix="/action-list", tags=["action-list"])
+api_router.include_router(sourcing.router, prefix="/sourcing", tags=["sourcing"])
+api_router.include_router(scenarios.router, prefix="/scenarios", tags=["scenarios"])
+api_router.include_router(analyses.router, prefix="/analyses", tags=["analyses"])
