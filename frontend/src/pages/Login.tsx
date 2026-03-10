@@ -29,7 +29,7 @@ const Login: React.FC = () => {
 
       const data = await response.json();
       localStorage.setItem('token', data.access_token);
-      navigate('/admin');
+      navigate('/dashboard');
     } catch (err: any) {
       setError(err.message || 'An error occurred during login');
     } finally {
