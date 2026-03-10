@@ -44,11 +44,12 @@ app.include_router(api_router, prefix="/api/v1")
 
 
 async def _seed_demo_user():
-    """Ensure demo@tariffnavigator.com exists on every startup."""
-    import logging
+    """Ensure demo@tariffnavigator.com exists with realistic sample data."""
+    import uuid, json, logging
     from passlib.context import CryptContext
     from sqlalchemy import text
     from app.db.session import async_session
+    from datetime import datetime, timedelta
     _log = logging.getLogger(__name__)
     try:
         async with async_session() as db:
@@ -56,20 +57,135 @@ async def _seed_demo_user():
                 text("SELECT id FROM users WHERE email = :email"),
                 {"email": "demo@tariffnavigator.com"}
             )
-            if result.scalar_one_or_none():
-                return  # already exists
-            import uuid
-            pwd = CryptContext(schemes=["bcrypt"], deprecated="auto").hash("demo1234")
-            await db.execute(
-                text("""INSERT INTO users (id, email, hashed_password, full_name, role, is_active, is_email_verified)
-                        VALUES (:id, :email, :pw, :name, :role, :active, :verified)"""),
-                {"id": str(uuid.uuid4()), "email": "demo@tariffnavigator.com",
-                 "pw": pwd, "name": "Demo User", "role": "pro", "active": True, "verified": True}
+            existing = result.scalar_one_or_none()
+            if existing:
+                user_id = existing
+            else:
+                user_id = str(uuid.uuid4())
+                pwd = CryptContext(schemes=["bcrypt"], deprecated="auto").hash("demo1234")
+                await db.execute(
+                    text("""INSERT INTO users (id, email, hashed_password, full_name, role, is_active, is_email_verified)
+                            VALUES (:id, :email, :pw, :name, :role, :active, :verified)"""),
+                    {"id": user_id, "email": "demo@tariffnavigator.com",
+                     "pw": pwd, "name": "Demo User", "role": "pro", "active": True, "verified": True}
+                )
+                _log.info("Demo user created: demo@tariffnavigator.com")
+
+            # --- Watchlists ---
+            wl_check = await db.execute(
+                text("SELECT COUNT(*) FROM watchlists WHERE user_id = :uid"), {"uid": user_id}
             )
+            if wl_check.scalar() == 0:
+                watchlists = [
+                    {"id": str(uuid.uuid4()), "name": "China Electronics",
+                     "description": "High-exposure consumer electronics from China",
+                     "hs_codes": json.dumps(["8471.30", "8517.12", "8528.72"]),
+                     "countries": json.dumps(["CN"]),
+                     "alert_preferences": json.dumps({"email": True, "digest": "daily"})},
+                    {"id": str(uuid.uuid4()), "name": "Steel & Aluminum (Sec. 232)",
+                     "description": "Section 232 metals — tracking rate changes",
+                     "hs_codes": json.dumps(["7208.10", "7606.11", "7601.10"]),
+                     "countries": json.dumps(["CN", "MX", "CA", "DE"]),
+                     "alert_preferences": json.dumps({"email": True, "digest": "weekly"})},
+                    {"id": str(uuid.uuid4()), "name": "Apparel — Vietnam",
+                     "description": "Monitoring IEEPA impact on Vietnam sourcing",
+                     "hs_codes": json.dumps(["6109.10", "6203.42", "6204.62"]),
+                     "countries": json.dumps(["VN"]),
+                     "alert_preferences": json.dumps({"email": False, "digest": "weekly"})},
+                ]
+                for wl in watchlists:
+                    await db.execute(text("""
+                        INSERT INTO watchlists (id, user_id, name, description, hs_codes, countries, alert_preferences, is_active, created_at)
+                        VALUES (:id, :uid, :name, :desc, :hs, :co, :ap, 1, :ts)
+                    """), {"id": wl["id"], "uid": user_id, "name": wl["name"], "desc": wl["description"],
+                           "hs": wl["hs_codes"], "co": wl["countries"], "ap": wl["alert_preferences"],
+                           "ts": datetime.utcnow().isoformat()})
+                _log.info("Demo watchlists seeded")
+
+            # --- Catalog + items ---
+            cat_check = await db.execute(
+                text("SELECT id FROM catalogs WHERE user_id = :uid LIMIT 1"), {"uid": user_id}
+            )
+            if not cat_check.scalar_one_or_none():
+                cat_id = str(uuid.uuid4())
+                await db.execute(text("""
+                    INSERT INTO catalogs (id, user_id, name, description, currency, total_skus, created_at, uploaded_at)
+                    VALUES (:id, :uid, :name, :desc, 'USD', 6, :ts, :ts)
+                """), {"id": cat_id, "uid": user_id, "name": "Q1 2026 Product Catalog",
+                       "desc": "Core import SKUs — tariff exposure analysis", "ts": datetime.utcnow().isoformat()})
+
+                items = [
+                    ("SKU-001", "Laptop Computer 15\"",    "8471.30", "CN", 420, 899,  2400, "Electronics", 12.5, 3528,   432.60, 38.8),
+                    ("SKU-002", "Wireless Earbuds",        "8518.30", "CN", 28,  79,   8500, "Electronics", 0.09, 14076,  238.00, 37.6),
+                    ("SKU-003", "Men's Cotton T-Shirt",    "6109.10", "VN", 6,   24,   12000,"Apparel",     0.18, 3888,   72.00,  65.2),
+                    ("SKU-004", "Aluminum Sheet 1mm",      "7606.11", "CN", 180, 310,  900,  "Metals",      8.2,  32400,  162.00, 45.1),
+                    ("SKU-005", "USB-C Charging Cable 2m", "8544.42", "CN", 3.5, 14,   22000,"Electronics", 0.05, 9856,   77.00,  68.4),
+                    ("SKU-006", "Running Shoes",           "6403.99", "VN", 22,  85,   5000, "Footwear",    0.85, 6600,   110.00, 60.2),
+                ]
+                for sku, name, hs, co, cogs, retail, vol, cat, wt, tariff_ann, tariff_unit, margin in items:
+                    await db.execute(text("""
+                        INSERT INTO catalog_items
+                          (id, catalog_id, sku, product_name, hs_code, origin_country, cogs, retail_price,
+                           annual_volume, category, weight_kg, annual_tariff_exposure, tariff_cost, margin_percent, created_at)
+                        VALUES (:id, :cid, :sku, :name, :hs, :co, :cogs, :retail, :vol, :cat, :wt, :tann, :tunit, :margin, :ts)
+                    """), {"id": str(uuid.uuid4()), "cid": cat_id, "sku": sku, "name": name, "hs": hs,
+                           "co": co, "cogs": cogs, "retail": retail, "vol": vol, "cat": cat, "wt": wt,
+                           "tann": tariff_ann, "tunit": tariff_unit, "margin": margin,
+                           "ts": datetime.utcnow().isoformat()})
+                _log.info("Demo catalog seeded with 6 SKUs")
+
+            # --- Saved analyses ---
+            an_check = await db.execute(
+                text("SELECT COUNT(*) FROM tool_analyses WHERE user_id = :uid"), {"uid": user_id}
+            )
+            if an_check.scalar() == 0:
+                analyses = [
+                    {
+                        "tool_type": "sourcing",
+                        "title": "Sourcing: Laptops (8471.30) — China vs Alternatives",
+                        "form_data": {"hts_code": "8471.30", "current_country": "CN", "annual_import_value": 1008000},
+                        "result_data": {
+                            "current_rate": 145.0, "alternatives": [
+                                {"country": "Vietnam", "rate": 46.0, "savings_pct": 68.3, "risk": "medium"},
+                                {"country": "Mexico",  "rate": 0.0,  "savings_pct": 100.0,"risk": "low"},
+                                {"country": "Taiwan",  "rate": 32.0, "savings_pct": 77.9, "risk": "low"},
+                            ]
+                        }
+                    },
+                    {
+                        "tool_type": "hts_audit",
+                        "title": "HTS Audit — Q1 2026 Product Line",
+                        "form_data": {"products": ["Laptop", "Earbuds", "T-Shirt"]},
+                        "result_data": {
+                            "risk_score": 72, "flags": [
+                                {"sku": "SKU-001", "issue": "Possible misclassification: 8471 vs 8473", "severity": "medium"},
+                                {"sku": "SKU-004", "issue": "Section 232 — verify country-of-melt origin", "severity": "high"},
+                            ]
+                        }
+                    },
+                    {
+                        "tool_type": "scenario",
+                        "title": "Scenario: China rates revert to 145%",
+                        "form_data": {"scenario": "china_145", "catalog_id": "demo"},
+                        "result_data": {
+                            "total_annual_impact": 86400, "affected_skus": 4,
+                            "worst_sku": "SKU-001", "recommendation": "Accelerate Vietnam qualification for SKU-001 and SKU-002"
+                        }
+                    },
+                ]
+                for i, a in enumerate(analyses):
+                    ts = (datetime.utcnow() - timedelta(days=i * 3)).isoformat()
+                    await db.execute(text("""
+                        INSERT INTO tool_analyses (id, user_id, tool_type, title, form_data, result_data, created_at)
+                        VALUES (:id, :uid, :type, :title, :fd, :rd, :ts)
+                    """), {"id": str(uuid.uuid4()), "uid": user_id, "type": a["tool_type"],
+                           "title": a["title"], "fd": json.dumps(a["form_data"]),
+                           "rd": json.dumps(a["result_data"]), "ts": ts})
+                _log.info("Demo analyses seeded")
+
             await db.commit()
-            _log.info("Demo user created: demo@tariffnavigator.com")
     except Exception as e:
-        _log.warning("Could not seed demo user: %s", e)
+        _log.warning("Could not seed demo user/data: %s", e)
 
 
 # ============================================================================
