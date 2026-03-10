@@ -111,8 +111,11 @@ async def forecast_cash_flow(request: CashFlowForecastRequest):
         else:
             risk = "low"
 
-        # AI recommendation
-        prompt = f"""An SMB is importing ${request.shipment_value:,.0f} worth of goods from {request.country_of_origin}.
+        # AI recommendation — falls back to static advice if AI unavailable
+        recommendation = None
+        if settings.OPENAI_API_KEY:
+            try:
+                prompt = f"""An SMB is importing ${request.shipment_value:,.0f} worth of goods from {request.country_of_origin}.
 Duty owed at port: ${duty_amount:,.0f} ({duty_rate*100:.1f}% rate).
 They won't receive payment/revenue for {request.payment_terms_days} days.
 Cash gap risk: {risk}.
@@ -122,16 +125,26 @@ Give 2-3 sentences of practical advice on how to manage this cash flow gap. Be s
 Mention: duty deferral programs, CBP bond options, or renegotiating payment terms with supplier.
 Keep it plain English, no jargon."""
 
-        response = await client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[
-                {"role": "system", "content": "You are a trade finance advisor helping small business owners manage tariff cash flow."},
-                {"role": "user", "content": prompt}
-            ],
-            temperature=0.3,
-            max_tokens=200
-        )
-        recommendation = response.choices[0].message.content
+                response = await client.chat.completions.create(
+                    model="gpt-4o-mini",
+                    messages=[
+                        {"role": "system", "content": "You are a trade finance advisor helping small business owners manage tariff cash flow."},
+                        {"role": "user", "content": prompt}
+                    ],
+                    temperature=0.3,
+                    max_tokens=200
+                )
+                recommendation = response.choices[0].message.content
+            except Exception:
+                pass
+
+        if not recommendation:
+            if risk == "high":
+                recommendation = f"Your duty obligation of ${duty_amount:,.0f} is due at port entry — {request.payment_terms_days} days before you collect revenue. Consider a CBP Continuous Bond (~$500/year) to defer payment up to 10 days, and negotiate a 50% upfront payment from your customer to reduce the gap."
+            elif risk == "medium":
+                recommendation = f"With ${duty_amount:,.0f} due at entry and {request.payment_terms_days} days until revenue, open a trade finance line of credit now — before the shipment ships. Many SBA lenders offer short-term import financing at 6–9% APR."
+            else:
+                recommendation = f"Your cash gap of ${duty_amount:,.0f} is manageable. Keep a dedicated duty reserve account funded at 30% of each shipment value to avoid surprises at port."
 
         financing_options = [
             FinancingOption(
