@@ -8,6 +8,8 @@ import { ComplianceExportButton } from '../components/ComplianceExportButton'
 import { SaveAnalysisButton } from '../components/SaveAnalysisButton'
 import { api } from '../services/api'
 import { usePageTitle } from '../hooks/usePageTitle'
+import Footer from '../components/Footer'
+
 
 
 interface RiskItem {
@@ -294,10 +296,7 @@ export default function SupplyChainPage() {
         )}
         </TierGate>
       </div>
-
-      <footer className="mt-12 py-6 border-t border-gray-100">
-        <p className="text-center text-xs text-gray-400">DJ AI Business Consultant • Syracuse, NY • Transforming Business, Rising Above the Challenges</p>
-      </footer>
+      <Footer />
     </div>
   )
 }

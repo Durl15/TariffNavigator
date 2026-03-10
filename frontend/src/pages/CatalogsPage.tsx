@@ -7,6 +7,8 @@ import toast from 'react-hot-toast'
 import Navigation from '../components/Navigation'
 import CatalogUploadModal from '../components/CatalogUploadModal'
 import { usePageTitle } from '../hooks/usePageTitle'
+import Footer from '../components/Footer'
+
 
 
 export default function CatalogsPage() {
@@ -185,6 +187,7 @@ function CatalogCard({ catalog, onViewImpact, onDelete }: CatalogCardProps) {
           <Trash2 className="w-4 h-4" />
         </button>
       </div>
+    <Footer />
     </div>
   )
 }

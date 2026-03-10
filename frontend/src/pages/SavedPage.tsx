@@ -5,6 +5,8 @@ import toast from 'react-hot-toast'
 import Navigation from '../components/Navigation'
 import { getAnalyses, deleteAnalysis, AnalysisRecord } from '../services/api'
 import { usePageTitle } from '../hooks/usePageTitle'
+import Footer from '../components/Footer'
+
 
 
 // ── Config maps ───────────────────────────────────────────────────────────────
@@ -374,13 +376,7 @@ export default function SavedPage() {
         )}
 
       </div>
-
-      {/* Footer */}
-      <footer className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 border-t border-gray-200 mt-4">
-        <p className="text-center text-xs text-gray-400">
-          DJ AI Business Consultant &bull; Syracuse, NY &bull; Transforming Business, Rising Above the Challenges
-        </p>
-      </footer>
+      <Footer />
     </div>
   )
 }

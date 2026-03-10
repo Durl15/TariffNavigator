@@ -26,6 +26,8 @@ import {
 import { getCatalogImpact, type CatalogItem } from '../services/api'
 import toast from 'react-hot-toast'
 import { usePageTitle } from '../hooks/usePageTitle'
+import Footer from '../components/Footer'
+
 
 
 const COLORS = ['#4F46E5', '#06B6D4', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899']
@@ -331,6 +333,7 @@ function MetricCard({ icon, title, value, subtitle, color }: MetricCardProps) {
         </div>
       </div>
       <p className="text-xs text-gray-500">{subtitle}</p>
+    <Footer />
     </div>
   )
 }

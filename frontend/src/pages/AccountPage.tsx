@@ -5,6 +5,8 @@ import toast from 'react-hot-toast'
 import Navigation from '../components/Navigation'
 import { getProfile, updateProfile, UserProfile } from '../services/api'
 import { usePageTitle } from '../hooks/usePageTitle'
+import Footer from '../components/Footer'
+
 
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -349,13 +351,7 @@ export default function AccountPage() {
         </div>
 
       </div>
-
-      {/* Footer */}
-      <footer className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-6 border-t border-gray-200 mt-2">
-        <p className="text-center text-xs text-gray-400">
-          DJ AI Business Consultant &bull; Syracuse, NY &bull; Transforming Business, Rising Above the Challenges
-        </p>
-      </footer>
+      <Footer />
     </div>
   )
 }

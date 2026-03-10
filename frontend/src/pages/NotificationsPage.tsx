@@ -17,6 +17,8 @@ import {
 } from '../services/api'
 import Navigation from '../components/Navigation'
 import { usePageTitle } from '../hooks/usePageTitle'
+import Footer from '../components/Footer'
+
 
 const NotificationsPage: React.FC = () => {
   usePageTitle('Notifications')

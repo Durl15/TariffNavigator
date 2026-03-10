@@ -7,6 +7,8 @@ import ComparisonMetrics from '../components/ComparisonMetrics'
 import ComparisonTable from '../components/ComparisonTable'
 import toast from 'react-hot-toast'
 import { usePageTitle } from '../hooks/usePageTitle'
+import Footer from '../components/Footer'
+
 
 
 export default function ComparisonPage() {
@@ -216,6 +218,7 @@ export default function ComparisonPage() {
           </div>
         )}
       </div>
+    <Footer />
     </div>
   )
 }

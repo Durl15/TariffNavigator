@@ -10,6 +10,8 @@ import { ComplianceExportButton } from '../components/ComplianceExportButton'
 import { SaveAnalysisButton } from '../components/SaveAnalysisButton'
 import { api, getCatalogs, type CatalogListResponse } from '../services/api'
 import { usePageTitle } from '../hooks/usePageTitle'
+import Footer from '../components/Footer'
+
 
 
 interface Preset {
@@ -414,10 +416,7 @@ export default function ScenarioPage() {
           </div>
         </TierGate>
       </div>
-
-      <footer className="mt-12 py-6 border-t border-gray-100">
-        <p className="text-center text-xs text-gray-400">DJ AI Business Consultant • Syracuse, NY • Transforming Business, Rising Above the Challenges</p>
-      </footer>
+      <Footer />
     </div>
   )
 }

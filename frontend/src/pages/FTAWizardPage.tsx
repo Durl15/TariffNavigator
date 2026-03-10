@@ -6,6 +6,8 @@ import WizardStep2Documentation from '../components/WizardStep2Documentation'
 import WizardStep3Savings from '../components/WizardStep3Savings'
 import WizardStep4Review from '../components/WizardStep4Review'
 import { usePageTitle } from '../hooks/usePageTitle'
+import Footer from '../components/Footer'
+
 
 
 export interface FTACheckResult {
@@ -123,6 +125,7 @@ export default function FTAWizardPage() {
           )}
         </div>
       </div>
+    <Footer />
     </div>
   )
 }

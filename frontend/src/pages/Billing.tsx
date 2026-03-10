@@ -12,6 +12,8 @@ import {
 import { api } from '../services/api';
 import toast from 'react-hot-toast';
 import { usePageTitle } from '../hooks/usePageTitle'
+import Footer from '../components/Footer'
+
 
 
 interface Subscription {

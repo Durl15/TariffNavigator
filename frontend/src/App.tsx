@@ -1,5 +1,6 @@
 ﻿import { useState, useEffect } from 'react'
 import { BrowserRouter as Router, Routes, Route, useNavigate, useSearchParams } from 'react-router-dom'
+import Footer from './components/Footer'
 import toast from 'react-hot-toast'
 import './index.css'
 import Navigation from './components/Navigation'
@@ -533,12 +534,8 @@ function CalculatorPage() {
             : <CostCalculator />}
         </div>
 
-        <footer className="mt-10 py-4 border-t border-gray-200">
-          <p className="text-center text-xs text-gray-400">
-            DJ AI Business Consultant • Syracuse, NY • Transforming Business, Rising Above the Challenges
-          </p>
-        </footer>
       </div>
+      <Footer />
     </div>
   )
 }

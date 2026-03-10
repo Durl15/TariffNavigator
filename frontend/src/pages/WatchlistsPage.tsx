@@ -11,6 +11,8 @@ import {
 import Navigation from '../components/Navigation'
 import { Eye } from 'lucide-react'
 import { usePageTitle } from '../hooks/usePageTitle'
+import Footer from '../components/Footer'
+
 
 const WatchlistsPage: React.FC = () => {
   usePageTitle('Watchlists')

@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Flame, Lock, Mail, ArrowRight, TrendingUp, Globe, Shield } from 'lucide-react';
 import { usePageTitle } from '../hooks/usePageTitle';
+import Footer from '../components/Footer'
+
 
 const Login: React.FC = () => {
   usePageTitle('Sign In');

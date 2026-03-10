@@ -7,6 +7,8 @@ import {
 } from 'lucide-react'
 import { getPublicStats, type PublicStats } from '../services/api'
 import { usePageTitle } from '../hooks/usePageTitle'
+import Footer from '../components/Footer'
+
 
 
 const PROBLEMS = [
@@ -441,30 +443,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── FOOTER ── */}
-      <footer className="bg-gray-900 text-gray-400 py-10">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-            <div className="flex items-center space-x-3">
-              <Flame className="h-5 w-5 text-brand-teal" />
-              <div>
-                <p className="text-white font-bold text-sm">TariffNavigator</p>
-                <p className="text-xs">DJ AI Business Consultant • Syracuse, NY</p>
-              </div>
-            </div>
-            <div className="flex items-center space-x-6 text-sm">
-              <Link to="/calculator" className="hover:text-white transition-colors">Calculator</Link>
-              <Link to="/pricing" className="hover:text-white transition-colors">Pricing</Link>
-              <a href="#tools" className="hover:text-white transition-colors">Features</a>
-              <Link to="/login" className="hover:text-white transition-colors">Sign In</Link>
-            </div>
-          </div>
-          <div className="border-t border-gray-800 mt-6 pt-6 flex flex-col md:flex-row items-center justify-between gap-2 text-xs">
-            <p>© 2026 DJ AI Business Consultant. All rights reserved.</p>
-            <p className="italic">Transforming Business, Rising Above the Challenges</p>
-          </div>
-        </div>
-      </footer>
+      <Footer />
     </div>
   )
 }

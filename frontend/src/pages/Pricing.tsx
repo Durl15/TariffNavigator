@@ -4,6 +4,8 @@ import { api } from '../services/api';
 import toast from 'react-hot-toast';
 import Navigation from '../components/Navigation';
 import { usePageTitle } from '../hooks/usePageTitle'
+import Footer from '../components/Footer'
+
 
 
 interface PlanFeature {

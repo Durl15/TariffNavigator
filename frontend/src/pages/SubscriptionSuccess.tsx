@@ -3,6 +3,8 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { CheckCircle, ArrowRight, Zap, Shield, Star, LayoutDashboard } from 'lucide-react';
 import Navigation from '../components/Navigation';
 import { usePageTitle } from '../hooks/usePageTitle'
+import Footer from '../components/Footer'
+
 
 
 const PLAN_INFO: Record<string, { label: string; iconBg: string; icon: React.ReactNode; perks: string[] }> = {
