@@ -37,6 +37,32 @@ const Login: React.FC = () => {
     }
   };
 
+  const handleDemoLogin = async () => {
+    setError('');
+    setLoading(true);
+    setEmail('demo@tariffnavigator.com');
+    setPassword('demo1234');
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'https://tariffnavigator-backend.onrender.com/api/v1';
+      const response = await fetch(`${apiUrl}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: 'demo@tariffnavigator.com', password: 'demo1234' }),
+      });
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.detail || 'Demo login failed');
+      }
+      const data = await response.json();
+      localStorage.setItem('token', data.access_token);
+      navigate('/dashboard');
+    } catch (err: any) {
+      setError(err.message || 'Demo login failed — please try again');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const features = [
     { icon: TrendingUp, text: 'Stacked tariff calculations across Section 232, 301, and IEEPA programs' },
     { icon: Globe,      text: 'Real-time change alerts for your watched HS codes and countries' },
@@ -174,7 +200,22 @@ const Login: React.FC = () => {
               </button>
             </form>
 
-            <div className="mt-6 pt-5 border-t border-gray-100 text-center">
+            <div className="mt-4">
+              <div className="relative flex items-center justify-center text-xs text-gray-400 mb-4">
+                <span className="absolute inset-x-0 top-1/2 h-px bg-gray-100" />
+                <span className="relative bg-white px-3">or</span>
+              </div>
+              <button
+                type="button"
+                onClick={handleDemoLogin}
+                disabled={loading}
+                className="w-full py-3 border-2 border-brand-teal text-brand-teal font-semibold rounded-xl hover:bg-brand-teal hover:text-white transition-all active:scale-[0.98] flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <span>Try Demo — No Account Needed</span>
+              </button>
+            </div>
+
+            <div className="mt-5 pt-5 border-t border-gray-100 text-center">
               <p className="text-xs text-gray-400">
                 Secured with 256-bit encryption
               </p>

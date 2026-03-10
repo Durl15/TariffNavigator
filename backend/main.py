@@ -43,6 +43,35 @@ app.add_middleware(RateLimitMiddleware)
 app.include_router(api_router, prefix="/api/v1")
 
 
+async def _seed_demo_user():
+    """Ensure demo@tariffnavigator.com exists on every startup."""
+    import logging
+    from passlib.context import CryptContext
+    from sqlalchemy import text
+    from app.db.session import async_session
+    _log = logging.getLogger(__name__)
+    try:
+        async with async_session() as db:
+            result = await db.execute(
+                text("SELECT id FROM users WHERE email = :email"),
+                {"email": "demo@tariffnavigator.com"}
+            )
+            if result.scalar_one_or_none():
+                return  # already exists
+            import uuid
+            pwd = CryptContext(schemes=["bcrypt"], deprecated="auto").hash("demo1234")
+            await db.execute(
+                text("""INSERT INTO users (id, email, hashed_password, full_name, role, is_active, is_email_verified)
+                        VALUES (:id, :email, :pw, :name, :role, :active, :verified)"""),
+                {"id": str(uuid.uuid4()), "email": "demo@tariffnavigator.com",
+                 "pw": pwd, "name": "Demo User", "role": "pro", "active": True, "verified": True}
+            )
+            await db.commit()
+            _log.info("Demo user created: demo@tariffnavigator.com")
+    except Exception as e:
+        _log.warning("Could not seed demo user: %s", e)
+
+
 # ============================================================================
 # APPLICATION LIFECYCLE EVENTS
 # ============================================================================
@@ -51,13 +80,21 @@ app.include_router(api_router, prefix="/api/v1")
 async def startup_event():
     """Initialize services on application startup."""
     from app.services.scheduler import start_scheduler
+    from app.services.hts_live import warm_cache
     import logging
+    import asyncio
 
     logger = logging.getLogger(__name__)
     logger.info("Starting TariffNavigator application...")
 
     # Start background scheduler
     start_scheduler()
+
+    # Pre-warm HTS cache in background (don't block startup)
+    asyncio.create_task(warm_cache())
+
+    # Seed demo user in background
+    asyncio.create_task(_seed_demo_user())
 
     logger.info("Application startup complete")
 
@@ -306,3 +343,8 @@ async def root():
 @app.get("/api/v1/health")
 def health_check():
     return {"status": "healthy", "ip": "10.153.69.163", "version": "1.0.0"}
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
