@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { Loader2, AlertTriangle, CheckCircle, TrendingUp, DollarSign, Package, Percent } from 'lucide-react'
 import { api } from '../services/api'
+import RateHistoryChart from './RateHistoryChart'
 
 // ============================================================================
 // Interfaces
@@ -52,7 +53,7 @@ interface OriginCountry {
 interface AutocompleteSuggestion {
   code: string
   description: string
-  mfn_rate: number
+  mfn_rate: number | null
 }
 
 // ============================================================================
@@ -201,15 +202,15 @@ export function UsImportCalculator() {
       }
       setSearchLoading(true)
       api
-        .get('/tariff/autocomplete', {
-          params: { query: q, country: 'CN' },
+        .get('/tariff/hts/search', {
+          params: { q, limit: 12 },
         })
         .then((res) => {
-          const items: AutocompleteSuggestion[] = (res.data?.results || res.data || []).map(
-            (item: { hs_code?: string; code?: string; description: string; mfn_rate?: number; general_rate?: number }) => ({
-              code: item.hs_code || item.code || '',
+          const items: AutocompleteSuggestion[] = (res.data?.results || []).map(
+            (item: { htsno: string; description: string; general_rate?: number | null }) => ({
+              code: item.htsno,
               description: item.description,
-              mfn_rate: item.mfn_rate ?? item.general_rate ?? 0,
+              mfn_rate: item.general_rate ?? null,
             })
           )
           setSuggestions(items)
@@ -387,7 +388,7 @@ export function UsImportCalculator() {
                   >
                     <div className="flex items-center justify-between gap-2">
                       <span className="font-mono text-sm font-semibold text-brand-navy">{s.code}</span>
-                      <span className="text-xs text-gray-400 shrink-0">MFN {s.mfn_rate}%</span>
+                      <span className="text-xs text-gray-400 shrink-0">{s.mfn_rate != null ? `MFN ${s.mfn_rate}%` : 'MFN Free'}</span>
                     </div>
                     <div className="text-xs text-gray-600 mt-0.5 line-clamp-2">{s.description}</div>
                   </button>
@@ -690,6 +691,15 @@ export function UsImportCalculator() {
           )}
 
         </div>
+
+          {/* Rate history chart */}
+          <RateHistoryChart
+            htsno={result.hs_code}
+            country={result.origin_country}
+            countryName={selectedCountry?.name ?? result.origin_country}
+          />
+
+      </div>
       )}
     </div>
   )

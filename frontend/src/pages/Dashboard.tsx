@@ -5,6 +5,7 @@ import toast from 'react-hot-toast'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import Navigation from '../components/Navigation'
+import OnboardingModal from '../components/OnboardingModal'
 
 const URGENCY_BADGE: Record<string, string> = {
   high: 'bg-red-100 text-red-700',
@@ -15,6 +16,9 @@ const URGENCY_BADGE: Record<string, string> = {
 export default function Dashboard() {
   const [isExporting, setIsExporting] = useState(false)
   const isAuthenticated = !!localStorage.getItem('token')
+  const [showOnboarding, setShowOnboarding] = useState(
+    isAuthenticated && !localStorage.getItem('onboarding_done')
+  )
 
   const { data: stats, isLoading: statsLoading } = useQuery<PublicStats>({
     queryKey: ['publicStats'],
@@ -102,6 +106,7 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen font-sans">
+      <OnboardingModal show={showOnboarding} onComplete={() => setShowOnboarding(false)} />
       <Navigation isAuthenticated={isAuthenticated} onLogout={handleLogout} />
 
       {/* Page hero header */}

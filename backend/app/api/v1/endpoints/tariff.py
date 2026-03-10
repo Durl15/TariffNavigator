@@ -12,6 +12,7 @@ from app.models.hs_code import HSCode
 from app.models.calculation import Calculation
 from app.models.user import User
 from app.services.tariff_stacking import calculate_us_import, ORIGIN_COUNTRIES
+from app.services.hts_live import search_hts, get_hts_rates as usitc_get_rates
 
 router = APIRouter()
 security = HTTPBearer(auto_error=False)
@@ -302,19 +303,155 @@ async def calculate_tariff(
 @router.get("/autocomplete")
 async def autocomplete_hs(
     query: str = Query(..., min_length=2),
-    country: str = Query(...),
+    country: str = Query(default="US"),
     db: AsyncSession = Depends(get_db)
 ):
-    """Search HS codes by description or code"""
+    """Search HS codes by description or code — DB first, USITC live fallback."""
     result = await db.execute(
         select(HSCode).where(
             HSCode.country == country.upper(),
-            (HSCode.code.like(f"{query}%")) | 
+            (HSCode.code.like(f"{query}%")) |
             (HSCode.description.ilike(f"%{query}%"))
         ).limit(10)
     )
     codes = result.scalars().all()
-    return [{"code": c.code, "description": c.description, "mfn_rate": c.mfn_rate} for c in codes]
+    if codes:
+        return [{"code": c.code, "description": c.description, "mfn_rate": c.mfn_rate} for c in codes]
+
+    # Fallback: USITC live search
+    live = await search_hts(query, limit=10)
+    return [
+        {"code": r["htsno"], "description": r["description"], "mfn_rate": r.get("general_rate"), "source": "usitc_live"}
+        for r in live
+    ]
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# USITC LIVE HTS SEARCH  (proxied + cached)
+# ─────────────────────────────────────────────────────────────────────────────
+
+@router.get("/hts/search")
+async def hts_live_search(
+    q: str = Query(..., min_length=2, description="Product keyword or HTS code prefix"),
+    limit: int = Query(10, ge=1, le=30),
+):
+    """
+    Search the live USITC HTS by product keyword or HTS prefix.
+    Results are cached server-side for 24 hours.
+    """
+    results = await search_hts(q, limit=limit)
+    return {
+        "query": q,
+        "source": "USITC HTS 2026",
+        "count": len(results),
+        "results": results,
+    }
+
+
+@router.get("/hts/rate-history/{htsno:path}")
+async def hts_rate_history(htsno: str, country: str = Query("CN", description="ISO country code")):
+    """
+    Return historical tariff rate timeline for an HTS code + country.
+    Based on known US tariff policy events (2018-present).
+    """
+    c = country.upper()
+    hts_prefix = htsno.replace(".", "")[:4]
+
+    # Known Section 232 chapters (steel=72/73, aluminum=76, autos=87, copper=74)
+    S232_CHAPTERS = {"72", "73", "74", "76", "87"}
+    # Section 301 List 1/2/3/4A chapters (electronics, machinery, auto parts, etc.)
+    S301_HIGH = {"84", "85", "87", "88", "90"}   # 25% from 2019
+    S301_LOW  = {"61", "62", "63", "64", "94"}   # 7.5% from 2020
+
+    chapter = hts_prefix[:2]
+    is_232 = chapter in S232_CHAPTERS
+    is_301_high = chapter in S301_HIGH
+    is_301_low = chapter in S301_LOW
+
+    # Get current MFN rate from USITC (best-effort)
+    mfn = 0.0
+    try:
+        live = await usitc_get_rates(htsno)
+        if live and live.get("general_rate") is not None:
+            mfn = float(live["general_rate"])
+    except Exception:
+        pass
+
+    timeline = []
+
+    def snap(date: str, label: str, mfn_r: float, s232: float, s301: float, ieepa: float):
+        total = mfn_r + s232 + s301 + ieepa
+        timeline.append({
+            "date": date, "label": label,
+            "mfn": round(mfn_r, 1), "s232": round(s232, 1),
+            "s301": round(s301, 1), "ieepa": round(ieepa, 1),
+            "total": round(total, 1),
+        })
+
+    if c == "CN":
+        snap("2017-01-01", "Pre-trade war",            mfn, 0,  0, 0)
+        if is_232:
+            snap("2018-03-23", "Section 232 enacted",  mfn, 25 if chapter in {"72","73"} else 10, 0, 0)
+        if is_301_high:
+            snap("2018-07-06", "Section 301 List 1",   mfn, 25 if is_232 else 0, 25, 0)
+            snap("2019-05-10", "Section 301 escalated",mfn, 25 if is_232 else 0, 25, 0)
+        elif is_301_low:
+            snap("2020-02-14", "Section 301 List 4A",  mfn, 0, 7.5, 0)
+        snap("2020-01-15", "Phase 1 deal (-50% 301)",  mfn, 25 if is_232 else 0,
+             (12.5 if is_301_high else 3.75 if is_301_low else 0), 0)
+        snap("2025-02-04", "IEEPA 10% added",          mfn, 25 if is_232 else 0,
+             (25 if is_301_high else 7.5 if is_301_low else 0), 10)
+        snap("2025-04-09", "IEEPA escalated to 145%",  mfn, 0, 0, 145)
+        snap("2025-05-14", "90-day pause (30% IEEPA)", mfn, 25 if is_232 else 0,
+             (25 if is_301_high else 7.5 if is_301_low else 0), 30)
+    elif c in ("CA", "MX"):
+        snap("2017-01-01", "Pre-USMCA",               mfn, 0, 0, 0)
+        if is_232:
+            snap("2018-06-01", "Section 232 enacted",  mfn, 25 if chapter in {"72","73"} else 10, 0, 0)
+            snap("2019-05-20", "Section 232 lifted",   mfn, 0, 0, 0)
+        snap("2020-07-01", "USMCA in force",           0,   0, 0, 0)
+        snap("2025-03-04", "IEEPA 25% (non-USMCA)",   mfn, 0, 0, 25)
+        snap("2025-04-02", "IEEPA 25% confirmed",      mfn, 0, 0, 25)
+    elif c in ("DE", "FR", "IT", "GB"):
+        snap("2017-01-01", "Normal trade",             mfn, 0, 0, 0)
+        if is_232:
+            snap("2018-06-01", "Section 232 enacted",  mfn, 25 if chapter in {"72","73"} else 10, 0, 0)
+            snap("2021-10-31", "Section 232 quota deal",mfn,0, 0, 0)
+            snap("2025-02-10", "Section 232 reinstated",mfn,25 if chapter in {"72","73"} else 10, 0, 0)
+        snap("2025-04-09", "IEEPA 20% added",          mfn, 25 if is_232 else 0, 0, 20)
+        snap("2025-04-10", "90-day pause (10% IEEPA)", mfn, 25 if is_232 else 0, 0, 10)
+    elif c == "VN":
+        snap("2017-01-01", "Normal trade",             mfn, 0, 0, 0)
+        snap("2025-04-09", "IEEPA 46% enacted",        mfn, 0, 0, 46)
+        snap("2025-04-10", "90-day pause (10% IEEPA)", mfn, 0, 0, 10)
+    else:
+        snap("2017-01-01", "Normal trade",             mfn, 0, 0, 0)
+        if is_232:
+            snap("2018-03-23", "Section 232 enacted",  mfn, 25 if chapter in {"72","73"} else 10, 0, 0)
+        snap("2025-04-09", "IEEPA reciprocal tariff",  mfn, 25 if is_232 else 0, 0, 10)
+        snap("2025-04-10", "90-day pause (10% IEEPA)", mfn, 25 if is_232 else 0, 0, 10)
+
+    # Add today
+    last = timeline[-1] if timeline else None
+    if last:
+        snap("2026-03-01", "Current rate", last["mfn"], last["s232"], last["s301"], last["ieepa"])
+
+    return {"htsno": htsno, "country": c, "timeline": timeline}
+
+
+@router.get("/hts/rates/{htsno:path}")
+async def hts_live_rates(htsno: str):
+    """
+    Fetch MFN and FTA duty rates for a specific HTS code from the live USITC data.
+    Accepts formats: '8471.30', '8471.30.01.00', '847130'.
+    """
+    result = await usitc_get_rates(htsno)
+    if not result:
+        raise HTTPException(
+            status_code=404,
+            detail=f"HTS code '{htsno}' not found in the USITC HTS schedule.",
+        )
+    return result
 
 @router.get("/fta-check")
 async def check_fta_eligibility(
@@ -452,6 +589,13 @@ async def calculate_us_import_tariff(
             description = db_code.description
             db_mfn_rate = float(db_code.mfn_rate) if db_code.mfn_rate else None
             break
+
+    # If not found in DB, query live USITC data for description + MFN rate
+    if not db_code:
+        live = await usitc_get_rates(hts_code)
+        if live:
+            description = live.get("description") or description
+            db_mfn_rate = live.get("general_rate")
 
     # Run stacking engine
     stacked = calculate_us_import(

@@ -1,195 +1,452 @@
-import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { Flame, ArrowRight, CheckCircle, X } from 'lucide-react'
+import { useState } from 'react'
+import {
+  Zap,
+  Scissors,
+  Layers,
+  Car,
+  Home,
+  Leaf,
+  Droplets,
+  Package,
+  ArrowRight,
+  ArrowLeft,
+  CheckCircle,
+  X,
+  Flame,
+} from 'lucide-react'
+import { api } from '../services/api'
 
-const STORAGE_KEY = 'tn_onboarding_v1'
-
-const PERSONAS = [
-  { id: 'importer', label: 'Product Importer', desc: 'I buy goods from overseas and import to the US', icon: '📦' },
-  { id: 'manufacturer', label: 'Manufacturer', desc: 'I use imported materials or components in production', icon: '🏭' },
-  { id: 'consultant', label: 'Trade Consultant / Broker', desc: 'I advise clients on customs and trade compliance', icon: '💼' },
-  { id: 'ecommerce', label: 'E-Commerce Seller', desc: 'I sell products online that ship from overseas', icon: '🛒' },
-]
-
-const CHALLENGES = [
-  { id: 'costs', label: 'Tariff Costs Are Crushing My Margins', icon: '💸', tool: '/calculator' },
-  { id: 'compliance', label: 'Worried About CBP Penalties', icon: '⚖️', tool: '/supply-chain' },
-  { id: 'cashflow', label: 'Cash Flow Stress at Port', icon: '🏦', tool: '/cashflow' },
-  { id: 'sourcing', label: 'Need to Find Cheaper Sourcing', icon: '🌏', tool: '/sourcing' },
-]
-
-const TOOL_ROUTES: Record<string, { path: string; label: string }> = {
-  costs: { path: '/calculator', label: 'Open Tariff Calculator' },
-  compliance: { path: '/supply-chain', label: 'Scan Supply Chain Risk' },
-  cashflow: { path: '/cashflow', label: 'Forecast Cash Flow' },
-  sourcing: { path: '/sourcing', label: 'Find Alternative Sourcing' },
+interface Props {
+  show: boolean
+  onComplete: () => void
 }
 
-export function OnboardingModal() {
-  const navigate = useNavigate()
-  const [visible, setVisible] = useState(false)
-  const [step, setStep] = useState(1)
-  const [persona, setPersona] = useState('')
-  const [challenge, setChallenge] = useState('')
+// ---------------------------------------------------------------------------
+// Step 1 — import categories
+// ---------------------------------------------------------------------------
+const CATEGORIES = [
+  { id: 'electronics',   label: 'Electronics',         Icon: Zap      },
+  { id: 'apparel',       label: 'Apparel & Footwear',  Icon: Scissors },
+  { id: 'metals',        label: 'Metals & Steel',      Icon: Layers   },
+  { id: 'auto',          label: 'Auto Parts',          Icon: Car      },
+  { id: 'furniture',     label: 'Furniture',           Icon: Home     },
+  { id: 'food',          label: 'Food & Agriculture',  Icon: Leaf     },
+  { id: 'chemicals',     label: 'Chemicals',           Icon: Droplets },
+  { id: 'other',         label: 'Other',               Icon: Package  },
+]
 
-  useEffect(() => {
-    const seen = localStorage.getItem(STORAGE_KEY)
-    const token = localStorage.getItem('token')
-    if (!seen && token) {
-      // Small delay so the page renders first
-      const t = setTimeout(() => setVisible(true), 800)
-      return () => clearTimeout(t)
-    }
-  }, [])
+// ---------------------------------------------------------------------------
+// Step 2 — source countries
+// ---------------------------------------------------------------------------
+const COUNTRIES = [
+  { code: 'CN', label: 'China',       flag: '🇨🇳' },
+  { code: 'VN', label: 'Vietnam',     flag: '🇻🇳' },
+  { code: 'MX', label: 'Mexico',      flag: '🇲🇽' },
+  { code: 'CA', label: 'Canada',      flag: '🇨🇦' },
+  { code: 'DE', label: 'Germany',     flag: '🇩🇪' },
+  { code: 'JP', label: 'Japan',       flag: '🇯🇵' },
+  { code: 'IN', label: 'India',       flag: '🇮🇳' },
+  { code: 'KR', label: 'South Korea', flag: '🇰🇷' },
+  { code: 'TW', label: 'Taiwan',      flag: '🇹🇼' },
+  { code: 'BD', label: 'Bangladesh',  flag: '🇧🇩' },
+]
 
-  const dismiss = () => {
-    localStorage.setItem(STORAGE_KEY, 'done')
-    setVisible(false)
-  }
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+function primaryCategory(selectedIds: string[]): string {
+  if (selectedIds.length === 0) return 'My'
+  const first = CATEGORIES.find(c => c.id === selectedIds[0])
+  return first ? first.label : 'My'
+}
 
-  const finish = () => {
-    localStorage.setItem(STORAGE_KEY, 'done')
-    setVisible(false)
-    const route = TOOL_ROUTES[challenge]
-    if (route) navigate(route.path)
-    else navigate('/calculator')
-  }
-
-  if (!visible) return null
-
-  const totalSteps = 3
-
+// ---------------------------------------------------------------------------
+// Progress indicator
+// ---------------------------------------------------------------------------
+function StepDots({ step }: { step: number }) {
   return (
-    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" onClick={e => { if (e.target === e.currentTarget) dismiss() }}>
-      <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden">
-        {/* Progress bar */}
-        <div className="h-1 bg-gray-100">
+    <div className="flex items-center justify-center space-x-2 py-4">
+      {[1, 2, 3].map(s => (
+        <div
+          key={s}
+          className={`rounded-full transition-all duration-300 ${
+            s === step
+              ? 'w-6 h-2.5 bg-brand-teal'
+              : s < step
+              ? 'w-2.5 h-2.5 bg-brand-teal/50'
+              : 'w-2.5 h-2.5 bg-gray-200'
+          }`}
+        />
+      ))}
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Main component
+// ---------------------------------------------------------------------------
+export function OnboardingModal({ show, onComplete }: Props) {
+  const [step, setStep] = useState(1)
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([])
+  const [selectedCountries, setSelectedCountries] = useState<string[]>([])
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+
+  if (!show) return null
+
+  // ---- shared skip / complete ----
+  const skip = () => {
+    localStorage.setItem('onboarding_done', '1')
+    onComplete()
+  }
+
+  // ---- toggle helpers ----
+  const toggleCategory = (id: string) => {
+    setSelectedCategories(prev =>
+      prev.includes(id) ? prev.filter(c => c !== id) : [...prev, id]
+    )
+  }
+
+  const toggleCountry = (code: string) => {
+    setSelectedCountries(prev =>
+      prev.includes(code) ? prev.filter(c => c !== code) : [...prev, code]
+    )
+  }
+
+  // ---- step 3 derived values ----
+  const watchlistName = `My ${primaryCategory(selectedCategories)} Imports`
+  const watchedCountryLabels = selectedCountries
+    .map(code => COUNTRIES.find(c => c.code === code))
+    .filter(Boolean)
+    .map(c => `${c!.flag} ${c!.label}`)
+
+  // ---- final action ----
+  const handleCreateWatchlist = async () => {
+    setSaving(true)
+    setError('')
+    try {
+      await api.post('/watchlists', {
+        name: watchlistName,
+        hs_codes: [],
+        countries: selectedCountries,
+        alert_preferences: { email: true, digest: 'daily' },
+      })
+    } catch {
+      // Non-fatal — proceed even if watchlist creation fails
+    } finally {
+      setSaving(false)
+      localStorage.setItem('onboarding_done', '1')
+      onComplete()
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // Render
+  // -------------------------------------------------------------------------
+  return (
+    <div
+      className="fixed inset-0 bg-brand-navy/80 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+      onClick={e => { if (e.target === e.currentTarget) skip() }}
+    >
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden">
+
+        {/* ── Top progress bar ─────────────────────────────────────── */}
+        <div className="h-1.5 bg-gray-100">
           <div
             className="h-full bg-brand-teal transition-all duration-500"
-            style={{ width: `${(step / totalSteps) * 100}%` }}
+            style={{ width: `${(step / 3) * 100}%` }}
           />
         </div>
 
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+        {/* ── Header ───────────────────────────────────────────────── */}
+        <div className="flex items-center justify-between px-6 pt-5 pb-3">
           <div className="flex items-center space-x-2">
             <div className="bg-brand-teal rounded-lg p-1.5">
-              <Flame size={16} className="text-white" />
+              <Flame size={15} className="text-white" />
             </div>
-            <span className="font-bold text-brand-navy text-sm">TariffNavigator Setup</span>
+            <span className="font-bold text-brand-navy text-sm tracking-tight">
+              TariffNavigator Setup
+            </span>
           </div>
           <div className="flex items-center space-x-3">
-            <span className="text-xs text-gray-400">Step {step} of {totalSteps}</span>
-            <button onClick={dismiss} className="text-gray-400 hover:text-gray-600">
+            <span className="text-xs text-gray-400">Step {step} of 3</span>
+            <button
+              onClick={skip}
+              className="text-gray-300 hover:text-gray-500 transition-colors"
+              aria-label="Close"
+            >
               <X size={18} />
             </button>
           </div>
         </div>
 
-        {/* Step 1: Welcome */}
+        {/* ── Step dots ────────────────────────────────────────────── */}
+        <StepDots step={step} />
+
+        {/* ================================================================
+            STEP 1 — What do you import?
+        ================================================================ */}
         {step === 1 && (
-          <div className="px-6 py-8 text-center">
-            <div className="w-16 h-16 bg-brand-navy rounded-2xl flex items-center justify-center mx-auto mb-4">
-              <Flame size={32} className="text-brand-teal" />
-            </div>
-            <h2 className="text-2xl font-bold text-brand-navy mb-2">Welcome to TariffNavigator</h2>
-            <p className="text-gray-500 mb-6">
-              AI-powered tariff intelligence for American businesses. Let's get you set up in 60 seconds.
+          <div className="px-6 pb-6">
+            <h2 className="text-xl font-bold text-brand-navy mb-1">
+              What do you import?
+            </h2>
+            <p className="text-sm text-gray-500 mb-5">
+              Select all categories that apply. We'll pre-load relevant HTS codes for you.
             </p>
-            <div className="text-left space-y-3 mb-8">
-              {[
-                'Calculate stacked duties — Section 301, IEEPA, USMCA, all at once',
-                'Recover up to 99% of duties you\'ve already paid',
-                'Catch HTS misclassifications before CBP does',
-                '"What if China snaps back to 145%?" — model it in seconds',
-              ].map((item, i) => (
-                <div key={i} className="flex items-center space-x-3">
-                  <CheckCircle size={16} className="text-brand-teal flex-shrink-0" />
-                  <p className="text-sm text-gray-700">{item}</p>
-                </div>
-              ))}
+
+            <div className="grid grid-cols-4 gap-2.5 mb-6">
+              {CATEGORIES.map(({ id, label, Icon }) => {
+                const active = selectedCategories.includes(id)
+                return (
+                  <button
+                    key={id}
+                    onClick={() => toggleCategory(id)}
+                    className={`relative flex flex-col items-center justify-center gap-1.5 py-4 px-2 rounded-xl border-2 transition-all text-center ${
+                      active
+                        ? 'border-brand-teal bg-teal-50 shadow-sm'
+                        : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                    }`}
+                  >
+                    {active && (
+                      <CheckCircle
+                        size={13}
+                        className="absolute top-1.5 right-1.5 text-brand-teal"
+                      />
+                    )}
+                    <Icon
+                      size={22}
+                      className={active ? 'text-brand-teal' : 'text-gray-400'}
+                    />
+                    <span
+                      className={`text-xs font-medium leading-tight ${
+                        active ? 'text-brand-teal' : 'text-gray-600'
+                      }`}
+                    >
+                      {label}
+                    </span>
+                  </button>
+                )
+              })}
             </div>
-            <button
-              onClick={() => setStep(2)}
-              className="w-full py-3 bg-brand-navy text-white font-bold rounded-xl hover:bg-brand-navy-dark transition-colors flex items-center justify-center space-x-2"
-            >
-              <span>Get Started</span>
-              <ArrowRight size={16} />
-            </button>
+
+            <div className="flex items-center justify-between">
+              <button
+                onClick={skip}
+                className="text-xs text-gray-400 hover:text-gray-600 underline underline-offset-2"
+              >
+                Skip for now
+              </button>
+              <button
+                onClick={() => setStep(2)}
+                disabled={selectedCategories.length === 0}
+                className="flex items-center space-x-2 px-5 py-2.5 bg-brand-navy text-white text-sm font-bold rounded-xl hover:bg-brand-navy/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <span>Next</span>
+                <ArrowRight size={15} />
+              </button>
+            </div>
           </div>
         )}
 
-        {/* Step 2: Persona */}
+        {/* ================================================================
+            STEP 2 — Which countries do you source from?
+        ================================================================ */}
         {step === 2 && (
-          <div className="px-6 py-7">
-            <h2 className="text-xl font-bold text-brand-navy mb-1">What best describes you?</h2>
-            <p className="text-gray-500 text-sm mb-5">We'll personalize your experience.</p>
-            <div className="grid grid-cols-2 gap-3 mb-6">
-              {PERSONAS.map(p => (
-                <button
-                  key={p.id}
-                  onClick={() => setPersona(p.id)}
-                  className={`text-left p-4 rounded-xl border transition-all ${
-                    persona === p.id
-                      ? 'border-brand-blue bg-blue-50'
-                      : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                  }`}
-                >
-                  <span className="text-2xl mb-2 block">{p.icon}</span>
-                  <p className="font-semibold text-sm text-brand-navy">{p.label}</p>
-                  <p className="text-xs text-gray-400 mt-0.5">{p.desc}</p>
-                </button>
-              ))}
+          <div className="px-6 pb-6">
+            <h2 className="text-xl font-bold text-brand-navy mb-1">
+              Which countries do you source from?
+            </h2>
+            <p className="text-sm text-gray-500 mb-5">
+              We'll monitor tariff changes for these origins and alert you to rate changes.
+            </p>
+
+            <div className="grid grid-cols-2 gap-2 mb-6">
+              {COUNTRIES.map(({ code, label, flag }) => {
+                const active = selectedCountries.includes(code)
+                return (
+                  <label
+                    key={code}
+                    className={`flex items-center space-x-3 p-3 rounded-xl border-2 cursor-pointer transition-all ${
+                      active
+                        ? 'border-brand-teal bg-teal-50'
+                        : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={active}
+                      onChange={() => toggleCountry(code)}
+                      className="sr-only"
+                    />
+                    <div
+                      className={`w-4 h-4 rounded border-2 flex-shrink-0 flex items-center justify-center transition-colors ${
+                        active ? 'border-brand-teal bg-brand-teal' : 'border-gray-300'
+                      }`}
+                    >
+                      {active && (
+                        <svg
+                          viewBox="0 0 10 8"
+                          fill="none"
+                          className="w-2.5 h-2"
+                        >
+                          <path
+                            d="M1 4l2.5 2.5L9 1"
+                            stroke="white"
+                            strokeWidth="1.6"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        </svg>
+                      )}
+                    </div>
+                    <span className="text-lg leading-none">{flag}</span>
+                    <span
+                      className={`text-sm font-medium ${
+                        active ? 'text-brand-teal' : 'text-gray-700'
+                      }`}
+                    >
+                      {label}
+                    </span>
+                  </label>
+                )
+              })}
             </div>
-            <div className="flex space-x-3">
-              <button onClick={() => setStep(1)} className="px-4 py-2.5 border border-gray-200 text-gray-600 rounded-xl text-sm hover:bg-gray-50">
-                Back
-              </button>
+
+            <div className="flex items-center justify-between">
               <button
-                onClick={() => persona ? setStep(3) : null}
-                disabled={!persona}
-                className="flex-1 py-2.5 bg-brand-navy text-white font-bold rounded-xl hover:bg-brand-navy-dark transition-colors disabled:opacity-40 flex items-center justify-center space-x-2"
+                onClick={skip}
+                className="text-xs text-gray-400 hover:text-gray-600 underline underline-offset-2"
               >
-                <span>Continue</span>
-                <ArrowRight size={16} />
+                Skip for now
               </button>
+              <div className="flex space-x-2">
+                <button
+                  onClick={() => setStep(1)}
+                  className="flex items-center space-x-1 px-4 py-2.5 border border-gray-200 text-gray-600 text-sm rounded-xl hover:bg-gray-50 transition-colors"
+                >
+                  <ArrowLeft size={14} />
+                  <span>Back</span>
+                </button>
+                <button
+                  onClick={() => setStep(3)}
+                  disabled={selectedCountries.length === 0}
+                  className="flex items-center space-x-2 px-5 py-2.5 bg-brand-navy text-white text-sm font-bold rounded-xl hover:bg-brand-navy/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  <span>Next</span>
+                  <ArrowRight size={15} />
+                </button>
+              </div>
             </div>
           </div>
         )}
 
-        {/* Step 3: Challenge */}
+        {/* ================================================================
+            STEP 3 — Create your first watchlist
+        ================================================================ */}
         {step === 3 && (
-          <div className="px-6 py-7">
-            <h2 className="text-xl font-bold text-brand-navy mb-1">What's your biggest challenge right now?</h2>
-            <p className="text-gray-500 text-sm mb-5">We'll show you the most relevant tool first.</p>
-            <div className="space-y-2 mb-6">
-              {CHALLENGES.map(c => (
-                <button
-                  key={c.id}
-                  onClick={() => setChallenge(c.id)}
-                  className={`w-full text-left p-4 rounded-xl border flex items-center space-x-3 transition-all ${
-                    challenge === c.id
-                      ? 'border-brand-blue bg-blue-50'
-                      : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                  }`}
-                >
-                  <span className="text-2xl flex-shrink-0">{c.icon}</span>
-                  <p className="font-medium text-sm text-brand-navy">{c.label}</p>
-                  {challenge === c.id && <CheckCircle size={16} className="text-brand-blue ml-auto flex-shrink-0" />}
-                </button>
-              ))}
+          <div className="px-6 pb-6">
+            <h2 className="text-xl font-bold text-brand-navy mb-1">
+              Create your first watchlist
+            </h2>
+            <p className="text-sm text-gray-500 mb-5">
+              We'll set up alerts so you're notified the moment tariff rates change.
+            </p>
+
+            {/* Watchlist preview card */}
+            <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 mb-5 space-y-3">
+              <div>
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">
+                  Watchlist Name
+                </p>
+                <p className="text-base font-bold text-brand-navy">{watchlistName}</p>
+              </div>
+
+              <div>
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
+                  Monitoring Countries
+                </p>
+                {watchedCountryLabels.length > 0 ? (
+                  <div className="flex flex-wrap gap-1.5">
+                    {watchedCountryLabels.map(c => (
+                      <span
+                        key={c}
+                        className="inline-flex items-center px-2.5 py-1 bg-teal-50 border border-brand-teal/30 text-brand-teal text-xs font-medium rounded-full"
+                      >
+                        {c}
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-400 italic">No countries selected</p>
+                )}
+              </div>
+
+              <div>
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">
+                  Alert Preferences
+                </p>
+                <div className="flex items-center space-x-2 text-sm text-gray-600">
+                  <CheckCircle size={13} className="text-brand-teal flex-shrink-0" />
+                  <span>Email alerts enabled &mdash; daily digest</span>
+                </div>
+              </div>
             </div>
-            <div className="flex space-x-3">
-              <button onClick={() => setStep(2)} className="px-4 py-2.5 border border-gray-200 text-gray-600 rounded-xl text-sm hover:bg-gray-50">
-                Back
+
+            {error && (
+              <p className="text-xs text-red-500 mb-3">{error}</p>
+            )}
+
+            <button
+              onClick={handleCreateWatchlist}
+              disabled={saving}
+              className="w-full flex items-center justify-center space-x-2 py-3 bg-brand-teal text-white text-sm font-bold rounded-xl hover:bg-brand-teal/90 transition-colors disabled:opacity-60 disabled:cursor-not-allowed mb-3"
+            >
+              {saving ? (
+                <>
+                  <svg
+                    className="animate-spin h-4 w-4 text-white"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    />
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8v8H4z"
+                    />
+                  </svg>
+                  <span>Creating Watchlist…</span>
+                </>
+              ) : (
+                <>
+                  <CheckCircle size={16} />
+                  <span>Create Watchlist &amp; Get Started</span>
+                </>
+              )}
+            </button>
+
+            <div className="flex items-center justify-between">
+              <button
+                onClick={skip}
+                className="text-xs text-gray-400 hover:text-gray-600 underline underline-offset-2"
+              >
+                Skip for now
               </button>
               <button
-                onClick={finish}
-                disabled={!challenge}
-                className="flex-1 py-3 bg-brand-teal text-white font-bold rounded-xl hover:bg-brand-teal-dark transition-colors disabled:opacity-40 flex items-center justify-center space-x-2"
+                onClick={() => setStep(2)}
+                className="flex items-center space-x-1 px-4 py-2 border border-gray-200 text-gray-600 text-sm rounded-xl hover:bg-gray-50 transition-colors"
               >
-                <span>{challenge ? TOOL_ROUTES[challenge]?.label : 'Go to Dashboard'}</span>
-                <ArrowRight size={16} />
+                <ArrowLeft size={14} />
+                <span>Back</span>
               </button>
             </div>
           </div>
