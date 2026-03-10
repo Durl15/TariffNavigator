@@ -2,6 +2,7 @@
 Catalogs API Endpoints - Product Catalog Management & Impact Analysis
 """
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Form, status
+from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_, desc
 from typing import Optional
@@ -21,6 +22,7 @@ from app.schemas.catalog import (
     CatalogResponse,
     CatalogListItem,
     CatalogListResponse,
+    CatalogCreateRequest,
     CatalogUpdateRequest,
     CatalogUploadResponse,
     UploadError,
@@ -64,6 +66,82 @@ async def check_sku_limit(user: User, db: AsyncSession, sku_count: int):
             status_code=status.HTTP_403_FORBIDDEN,
             detail=f"SKU limit exceeded. Your {tier} tier allows up to {int(limit)} SKUs. Upload contains {sku_count} SKUs. Upgrade to Pro for 10,000 SKUs or Enterprise for unlimited."
         )
+
+
+# ============================================================================
+# CREATE EMPTY CATALOG (manual entry)
+# ============================================================================
+
+@router.post("", response_model=CatalogResponse, dependencies=[Depends(check_user_rate_limit)])
+async def create_catalog(
+    data: CatalogCreateRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Create an empty catalog for manual product entry."""
+    catalog = Catalog(
+        id=str(uuid.uuid4()),
+        user_id=current_user.id,
+        organization_id=current_user.organization_id,
+        name=data.name,
+        description=data.description,
+        currency='USD',
+        total_skus=0,
+        uploaded_at=datetime.utcnow()
+    )
+    db.add(catalog)
+    await db.commit()
+    await db.refresh(catalog)
+    return CatalogResponse.model_validate(catalog)
+
+
+class CatalogItemCreateRequest(BaseModel):
+    sku: str
+    product_name: Optional[str] = None
+    hs_code: Optional[str] = None
+    origin_country: str
+    cogs: float
+    retail_price: float
+    annual_volume: int
+    category: Optional[str] = None
+    notes: Optional[str] = None
+
+
+@router.post("/{catalog_id}/items", response_model=CatalogItemResponse, dependencies=[Depends(check_user_rate_limit)])
+async def add_catalog_item(
+    catalog_id: str,
+    data: CatalogItemCreateRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Add a single product to an existing catalog."""
+    catalog_result = await db.execute(
+        select(Catalog).where(
+            and_(Catalog.id == catalog_id, Catalog.user_id == current_user.id, Catalog.deleted_at.is_(None))
+        )
+    )
+    catalog = catalog_result.scalar_one_or_none()
+    if not catalog:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Catalog not found")
+
+    item = CatalogItem(
+        id=str(uuid.uuid4()),
+        catalog_id=catalog_id,
+        sku=data.sku,
+        product_name=data.product_name,
+        hs_code=data.hs_code,
+        origin_country=data.origin_country.upper(),
+        cogs=data.cogs,
+        retail_price=data.retail_price,
+        annual_volume=data.annual_volume,
+        category=data.category,
+        notes=data.notes,
+    )
+    db.add(item)
+    catalog.total_skus = (catalog.total_skus or 0) + 1
+    await db.commit()
+    await db.refresh(item)
+    return CatalogItemResponse.model_validate(item)
 
 
 # ============================================================================

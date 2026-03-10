@@ -676,6 +676,32 @@ export async function updateCatalog(
   return response.data
 }
 
+// Create empty catalog (manual entry)
+export async function createCatalog(data: { name: string; description?: string }): Promise<Catalog> {
+  const response = await api.post('/catalogs', data, {
+    headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+  })
+  return response.data
+}
+
+// Add a single item to a catalog
+export async function addCatalogItem(catalogId: string, item: {
+  sku: string
+  product_name?: string
+  hs_code?: string
+  origin_country: string
+  cogs: number
+  retail_price: number
+  annual_volume: number
+  category?: string
+  notes?: string
+}): Promise<CatalogItem> {
+  const response = await api.post(`/catalogs/${catalogId}/items`, item, {
+    headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+  })
+  return response.data
+}
+
 // Delete catalog
 export async function deleteCatalog(id: string): Promise<void> {
   await api.delete(`/catalogs/${id}`, {

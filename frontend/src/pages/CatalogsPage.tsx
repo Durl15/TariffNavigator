@@ -1,11 +1,12 @@
 import React, { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
-import { Upload, Folder, Trash2, Edit, BarChart3, Plus } from 'lucide-react'
+import { Upload, Folder, Trash2, BarChart3, Plus, PenLine } from 'lucide-react'
 import { getCatalogs, deleteCatalog, type CatalogListItem } from '../services/api'
 import toast from 'react-hot-toast'
 import Navigation from '../components/Navigation'
 import CatalogUploadModal from '../components/CatalogUploadModal'
+import AddManuallyModal from '../components/AddManuallyModal'
 import { usePageTitle } from '../hooks/usePageTitle'
 import Footer from '../components/Footer'
 
@@ -14,6 +15,7 @@ import Footer from '../components/Footer'
 export default function CatalogsPage() {
   usePageTitle('Product Catalogs')
   const [showUploadModal, setShowUploadModal] = useState(false)
+  const [showManualModal, setShowManualModal] = useState(false)
   const navigate = useNavigate()
   const queryClient = useQueryClient()
 
@@ -67,13 +69,22 @@ export default function CatalogsPage() {
               Upload and analyze tariff impact across your product portfolio
             </p>
           </div>
-          <button
-            onClick={() => setShowUploadModal(true)}
-            className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors flex items-center gap-2"
-          >
-            <Upload className="w-5 h-5" />
-            Upload Catalog
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowManualModal(true)}
+              className="px-4 py-2.5 border-2 border-brand-navy text-brand-navy rounded-lg hover:bg-brand-navy hover:text-white transition-colors flex items-center gap-2 text-sm font-semibold"
+            >
+              <PenLine className="w-4 h-4" />
+              Add Manually
+            </button>
+            <button
+              onClick={() => setShowUploadModal(true)}
+              className="px-4 py-2.5 bg-brand-navy text-white rounded-lg hover:opacity-90 transition-colors flex items-center gap-2 text-sm font-semibold"
+            >
+              <Upload className="w-4 h-4" />
+              Upload CSV
+            </button>
+          </div>
         </div>
       </div>
 
@@ -85,13 +96,22 @@ export default function CatalogsPage() {
           <p className="text-gray-600 mb-6 max-w-md mx-auto">
             Upload a CSV of your product catalog to analyze tariff impact, calculate landed costs, and identify margin risks.
           </p>
-          <button
-            onClick={() => setShowUploadModal(true)}
-            className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors inline-flex items-center gap-2"
-          >
-            <Plus className="w-5 h-5" />
-            Upload Your First Catalog
-          </button>
+            <div className="flex items-center justify-center gap-3">
+            <button
+              onClick={() => setShowManualModal(true)}
+              className="px-5 py-2.5 border-2 border-brand-navy text-brand-navy rounded-lg hover:bg-brand-navy hover:text-white transition-colors inline-flex items-center gap-2 text-sm font-semibold"
+            >
+              <PenLine className="w-4 h-4" />
+              Add Manually
+            </button>
+            <button
+              onClick={() => setShowUploadModal(true)}
+              className="px-5 py-2.5 bg-brand-navy text-white rounded-lg hover:opacity-90 transition-colors inline-flex items-center gap-2 text-sm font-semibold"
+            >
+              <Upload className="w-4 h-4" />
+              Upload CSV
+            </button>
+          </div>
         </div>
       )}
 
@@ -125,7 +145,20 @@ export default function CatalogsPage() {
             setShowUploadModal(false)
             queryClient.invalidateQueries({ queryKey: ['catalogs'] })
             toast.success('Catalog uploaded successfully!')
-            // Navigate to impact page
+            navigate(`/catalogs/${catalogId}/impact`)
+          }}
+        />
+      )}
+
+      {/* Manual Entry Modal */}
+      {showManualModal && (
+        <AddManuallyModal
+          isOpen={showManualModal}
+          onClose={() => setShowManualModal(false)}
+          existingCatalogs={data?.catalogs.map(c => ({ id: c.id, name: c.name })) || []}
+          onSuccess={(catalogId) => {
+            setShowManualModal(false)
+            queryClient.invalidateQueries({ queryKey: ['catalogs'] })
             navigate(`/catalogs/${catalogId}/impact`)
           }}
         />

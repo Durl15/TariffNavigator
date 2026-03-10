@@ -1,11 +1,16 @@
 sku,product_name,hs_code,origin_country,cogs,retail_price,annual_volume,category,notes
-TEST-001,Widget A,8517130000,CN,25.00,49.99,10000,Electronics,Smartphones duty-free
-TEST-002,Widget B,8703230010,JP,150.00,299.99,5000,Automotive,Cars with RCEP benefits
-TEST-003,Widget C,8471300000,KR,80.00,149.99,8000,Electronics,Laptops duty-free
-TEST-004,Gadget D,8517130000,MX,30.00,59.99,12000,Electronics,Smartphones from Mexico
-TEST-005,Device E,8703230010,CN,200.00,399.99,3000,Automotive,Cars 1500-3000cc
-TEST-006,Component F,8703240010,JP,300.00,599.99,2000,Automotive,Cars >3000cc
-TEST-007,Part G,8517130000,CN,15.00,29.99,20000,Electronics,Mobile accessories
-TEST-008,Tool H,8703230090,JP,175.00,349.99,4000,Automotive,Other cars 1500-3000cc
-TEST-009,Item I,8471300000,JP,90.00,179.99,6000,Electronics,High-end laptops
-TEST-010,Product J,8703230010,KR,180.00,359.99,5500,Automotive,Korean cars
+SKU-001,Laptop Computer 15in,8471.30,CN,420.00,999.99,500,Electronics,High China tariff exposure
+SKU-002,Wireless Mouse,8471.60,CN,8.50,34.99,3000,Electronics,Small accessory high volume
+SKU-003,USB-C Charging Cable,8544.42,CN,2.10,19.99,8000,Electronics,Commodity item
+SKU-004,Running Shoes,6404.11,VN,28.00,120.00,2000,Footwear,Vietnam sourced - lower tariff
+SKU-005,Cotton T-Shirt,6109.10,BD,4.50,24.99,5000,Apparel,Bangladesh MFN rate
+SKU-006,Steel Pipe Bracket,7318.15,CN,1.20,8.99,10000,Hardware,Section 301 exposure
+SKU-007,Aluminum Extrusion,7604.10,CN,15.00,45.00,1200,Hardware,Section 232 plus 301 stacked
+SKU-008,Ceramic Coffee Mug,6912.00,CN,1.80,14.99,4000,Housewares,Lower tariff category
+SKU-009,Yoga Mat,3926.90,CN,6.00,39.99,1500,Fitness,Plastics category
+SKU-010,Bluetooth Speaker,8518.22,CN,18.00,79.99,800,Electronics,IEEPA electronics rate
+SKU-011,Work Gloves,6116.10,MX,3.50,18.99,6000,Safety,USMCA 0% eligible
+SKU-012,Safety Helmet,6506.10,MX,12.00,49.99,900,Safety,USMCA qualifying
+SKU-013,Solar Panel 100W,8541.40,VN,95.00,299.99,200,Energy,Vietnam - watch AD/CVD
+SKU-014,Bamboo Cutting Board,4419.90,VN,6.50,29.99,2500,Kitchen,Low tariff
+SKU-015,Stainless Steel Pot,7323.93,CN,14.00,59.99,700,Kitchen,Cookware Section 301
