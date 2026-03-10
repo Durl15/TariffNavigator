@@ -6,7 +6,6 @@ from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from typing import Optional, List
-import openai
 from openai import AsyncOpenAI
 
 from app.db.session import get_db
@@ -249,25 +248,48 @@ async def find_alternative_sources(
         else:
             alt_summary = "No significantly lower-rate alternatives found"
 
+        import_value_str = f"${annual_import_value:,.0f}" if annual_import_value else "unknown"
         prompt = f"""HTS code: {hts_code}
 Current sourcing: {current_country} at {current_rate*100:.1f}% effective tariff rate
 Top alternatives: {alt_summary}
-Annual import value: ${annual_import_value:,.0f if annual_import_value else 'unknown'}
+Annual import value: {import_value_str}
 
 Write 2-3 sentences for an SMB owner:
 1. Which alternative makes the most sense practically (not just lowest rate)?
 2. The biggest real-world obstacle to switching (tooling, MOQ, quality, lead time)?
 3. One action to take this week to evaluate the switch."""
 
-        response = await client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[
-                {"role": "system", "content": "You are a supply chain consultant advising US small businesses on tariff-driven sourcing decisions. Be practical and honest about trade-offs."},
-                {"role": "user", "content": prompt}
-            ],
-            temperature=0.3,
-            max_tokens=250
-        )
+        ai_analysis = None
+        if settings.OPENAI_API_KEY:
+            try:
+                response = await client.chat.completions.create(
+                    model="gpt-4o-mini",
+                    messages=[
+                        {"role": "system", "content": "You are a supply chain consultant advising US small businesses on tariff-driven sourcing decisions. Be practical and honest about trade-offs."},
+                        {"role": "user", "content": prompt}
+                    ],
+                    temperature=0.3,
+                    max_tokens=250
+                )
+                ai_analysis = response.choices[0].message.content
+            except Exception:
+                pass
+
+        if not ai_analysis:
+            if top_alts:
+                best = top_alts[0]
+                ai_analysis = (
+                    f"{best.country_name} offers the strongest tariff advantage at {best.effective_rate_percent:.1f}% "
+                    f"vs your current {current_rate*100:.1f}% from {current_country} — a savings of {best.savings_percent:.0f}%. "
+                    f"The main obstacle is typically supplier qualification time (3-6 months for audits and sample approval). "
+                    f"Start this week by requesting quotes from 2-3 suppliers in {best.country_name} to benchmark pricing and MOQ."
+                )
+            else:
+                ai_analysis = (
+                    f"No significantly lower-tariff alternatives were found for HTS {hts_code} from {current_country}. "
+                    f"Consider reviewing product classification to ensure the correct HTS code is being used, "
+                    f"or consult a licensed customs broker about duty drawback or exclusion opportunities."
+                )
 
         return SourcingResponse(
             hts_code=hts_code,
@@ -276,13 +298,11 @@ Write 2-3 sentences for an SMB owner:
             annual_import_value=annual_import_value,
             alternatives=alternatives,
             top_pick=top_pick,
-            ai_analysis=response.choices[0].message.content,
+            ai_analysis=ai_analysis,
             caveat="Rates are estimates based on current tariff programs. Verify with CBP or a licensed customs broker before sourcing decisions."
         )
 
     except HTTPException:
         raise
-    except openai.APIError as e:
-        raise HTTPException(status_code=503, detail=f"AI service error: {str(e)}")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Sourcing lookup error: {str(e)}")

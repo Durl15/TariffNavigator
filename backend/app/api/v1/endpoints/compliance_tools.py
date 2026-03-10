@@ -4,7 +4,6 @@ Compliance Tools - Drawback Finder, USMCA Checker, Supply Chain Risk Scanner, HT
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import Optional, List
-import openai
 from openai import AsyncOpenAI
 
 from app.core.config import settings
@@ -89,15 +88,36 @@ Explain in 2-3 sentences:
 2. The biggest practical gotcha or deadline to watch
 3. One specific action to take this week"""
 
-        response = await client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[
-                {"role": "system", "content": SYSTEM_TRADE},
-                {"role": "user", "content": prompt}
-            ],
-            temperature=0.2,
-            max_tokens=200
-        )
+        ai_analysis = None
+        if settings.OPENAI_API_KEY:
+            try:
+                response = await client.chat.completions.create(
+                    model="gpt-4o-mini",
+                    messages=[
+                        {"role": "system", "content": SYSTEM_TRADE},
+                        {"role": "user", "content": prompt}
+                    ],
+                    temperature=0.2,
+                    max_tokens=200
+                )
+                ai_analysis = response.choices[0].message.content
+            except Exception:
+                pass
+
+        if not ai_analysis:
+            if eligible:
+                ai_analysis = (
+                    f"{'Manufacturing drawback' if request.plans_to_manufacture else 'Unused merchandise drawback'} applies — "
+                    f"you can recover ${refund_amount:,.0f} (99% of duties paid). "
+                    f"File {form.split('(')[0].strip()} within 5 years of import; "
+                    f"CBP requires export documentation filed BEFORE goods leave the US. "
+                    f"Start this week by contacting a licensed customs broker for your first drawback claim."
+                )
+            else:
+                ai_analysis = (
+                    "Duty drawback does not apply since you are not re-exporting or using the goods in manufacturing. "
+                    "Consider whether any portion of your imports could qualify — even partial export volumes can generate meaningful refunds."
+                )
 
         return DrawbackResponse(
             eligible=eligible,
@@ -107,12 +127,12 @@ Explain in 2-3 sentences:
             deadline_description="5 years from import date to file; 3 years to export goods",
             form_required=form,
             steps=steps,
-            ai_analysis=response.choices[0].message.content,
+            ai_analysis=ai_analysis,
             annual_unclaimed_estimate=round(request.duty_paid * refund_pct * 12, 2) if eligible else None
         )
 
-    except openai.APIError as e:
-        raise HTTPException(status_code=503, detail=f"AI service error: {str(e)}")
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Drawback analysis error: {str(e)}")
 
@@ -204,15 +224,41 @@ USMCA eligible estimate: {usmca_eligible}, Confidence: {confidence}
 In 2-3 sentences: explain what the importer needs to do RIGHT NOW to either confirm USMCA eligibility
 or fix the qualification gap. Be specific about the most important document to obtain."""
 
-        response = await client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[
-                {"role": "system", "content": SYSTEM_TRADE},
-                {"role": "user", "content": prompt}
-            ],
-            temperature=0.2,
-            max_tokens=200
-        )
+        ai_analysis = None
+        if settings.OPENAI_API_KEY:
+            try:
+                response = await client.chat.completions.create(
+                    model="gpt-4o-mini",
+                    messages=[
+                        {"role": "system", "content": SYSTEM_TRADE},
+                        {"role": "user", "content": prompt}
+                    ],
+                    temperature=0.2,
+                    max_tokens=200
+                )
+                ai_analysis = response.choices[0].message.content
+            except Exception:
+                pass
+
+        if not ai_analysis:
+            if usmca_eligible and confidence != "low":
+                ai_analysis = (
+                    f"Your product appears to qualify for USMCA 0% duty. "
+                    f"The critical step is obtaining a signed Certificate of Origin from your {request.origin_country} supplier — "
+                    f"without it, CBP will assess MFN duties at port. Request this document before your next shipment."
+                )
+            elif confidence == "low":
+                ai_analysis = (
+                    "USMCA eligibility cannot be confirmed without content percentages. "
+                    "Request a Bill of Materials from your supplier showing what percentage of components originate in North America "
+                    "(must be ≥75% for most goods). Have your customs broker review this before the next shipment."
+                )
+            else:
+                ai_analysis = (
+                    f"Your product does not appear to meet the 75% Regional Value Content threshold for USMCA "
+                    f"with {china_pct:.0f}% Chinese components. Work with your {request.origin_country} supplier to substitute "
+                    f"North American components, or budget for the standard MFN duty rate."
+                )
 
         return UsmcaResponse(
             origin_country=request.origin_country.upper(),
@@ -223,11 +269,11 @@ or fix the qualification gap. Be specific about the most important document to o
             required_docs=required_docs,
             savings_if_qualified=savings,
             standard_rate_estimate=round(est_standard_rate * 100, 2),
-            ai_analysis=response.choices[0].message.content
+            ai_analysis=ai_analysis
         )
 
-    except openai.APIError as e:
-        raise HTTPException(status_code=503, detail=f"AI service error: {str(e)}")
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"USMCA check error: {str(e)}")
 
@@ -347,15 +393,42 @@ Risk level: {overall}, Transshipment risk: {transshipment}
 In 2-3 sentences: what is the single most important action this importer should take to protect themselves from CBP penalties?
 Be specific about timing and consequences of inaction."""
 
-        response = await client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[
-                {"role": "system", "content": SYSTEM_TRADE},
-                {"role": "user", "content": prompt}
-            ],
-            temperature=0.2,
-            max_tokens=200
-        )
+        ai_analysis = None
+        if settings.OPENAI_API_KEY:
+            try:
+                response = await client.chat.completions.create(
+                    model="gpt-4o-mini",
+                    messages=[
+                        {"role": "system", "content": SYSTEM_TRADE},
+                        {"role": "user", "content": prompt}
+                    ],
+                    temperature=0.2,
+                    max_tokens=200
+                )
+                ai_analysis = response.choices[0].message.content
+            except Exception:
+                pass
+
+        if not ai_analysis:
+            if overall == "high" and is_transshipment_risk:
+                ai_analysis = (
+                    f"Your top priority is to file a CBP Binding Ruling Request (Form 3353) immediately — "
+                    f"goods assembled in {request.supplier_country} with Chinese components may still be classified as Chinese-origin "
+                    f"under CBP's 'substantial transformation' test, triggering 25-40% Section 301 tariffs. "
+                    f"Without a ruling, CBP can reclassify shipments retroactively."
+                )
+            elif overall == "high":
+                ai_analysis = (
+                    f"The highest-risk factor is {risks[0].risk_type if risks else 'tariff exposure'}. "
+                    f"Obtain a manufacturer's certificate of origin and bill of materials from your supplier this week — "
+                    f"these are your first line of defense in any CBP audit."
+                )
+            else:
+                ai_analysis = (
+                    f"Your supply chain shows {overall} risk. "
+                    f"Maintain standard import documentation (commercial invoice, packing list, certificate of origin) "
+                    f"and review your records annually to stay audit-ready."
+                )
 
         return SupplyChainResponse(
             overall_risk=overall,
@@ -365,11 +438,11 @@ Be specific about timing and consequences of inaction."""
             estimated_penalty_exposure=penalty_exposure,
             risks=risks,
             recommended_docs=recommended_docs,
-            ai_analysis=response.choices[0].message.content
+            ai_analysis=ai_analysis
         )
 
-    except openai.APIError as e:
-        raise HTTPException(status_code=503, detail=f"AI service error: {str(e)}")
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Supply chain scan error: {str(e)}")
 
@@ -438,19 +511,40 @@ Respond in this exact JSON format:
   "analysis": "2 sentence explanation"
 }}"""
 
-        response = await client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[
-                {"role": "system", "content": "You are a licensed U.S. customs broker specializing in HTS classification. Always respond with valid JSON."},
-                {"role": "user", "content": prompt}
-            ],
-            temperature=0.1,
-            max_tokens=400,
-            response_format={"type": "json_object"}
-        )
-
         import json
-        ai_data = json.loads(response.choices[0].message.content)
+        ai_data = None
+        if settings.OPENAI_API_KEY:
+            try:
+                response = await client.chat.completions.create(
+                    model="gpt-4o-mini",
+                    messages=[
+                        {"role": "system", "content": "You are a licensed U.S. customs broker specializing in HTS classification. Always respond with valid JSON."},
+                        {"role": "user", "content": prompt}
+                    ],
+                    temperature=0.1,
+                    max_tokens=400,
+                    response_format={"type": "json_object"}
+                )
+                ai_data = json.loads(response.choices[0].message.content)
+            except Exception:
+                pass
+
+        if not ai_data:
+            ai_data = {
+                "classification_correct": "probably",
+                "recommended_code": request.current_hts_code,
+                "recommended_rate": 0.035,
+                "alternative_code": "",
+                "alternative_rate": 0.035,
+                "alternative_description": "",
+                "overpayment_risk": "no",
+                "misclassification_risk": "medium" if request.supplier_provided else "low",
+                "analysis": (
+                    f"AI classification unavailable. Since the code was {'supplier-provided' if request.supplier_provided else 'self-assigned'}, "
+                    f"consider consulting a licensed customs broker to verify {request.current_hts_code} is optimal "
+                    f"for '{request.product_description}'. Supplier-provided codes may not minimize your duty exposure."
+                )
+            }
 
         rec_rate = float(ai_data.get("recommended_rate", 0.035))
         alt_rate = float(ai_data.get("alternative_rate", 0.035))
@@ -488,7 +582,7 @@ Respond in this exact JSON format:
             ai_analysis=ai_data.get("analysis", "")
         )
 
-    except openai.APIError as e:
-        raise HTTPException(status_code=503, detail=f"AI service error: {str(e)}")
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"HTS audit error: {str(e)}")

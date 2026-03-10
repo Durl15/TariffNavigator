@@ -6,7 +6,6 @@ from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from typing import Optional, List, Dict
-import openai
 from openai import AsyncOpenAI
 
 from app.db.session import get_db
@@ -295,16 +294,37 @@ Write for a small business owner:
 
 Keep it under 100 words. Plain English."""
 
-        ai_response = await client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[
-                {"role": "system", "content": "You are a trade finance strategist advising US small business importers. Be direct and actionable."},
-                {"role": "user", "content": prompt}
-            ],
-            temperature=0.3,
-            max_tokens=200
-        )
-        summary = ai_response.choices[0].message.content
+        summary = None
+        if settings.OPENAI_API_KEY:
+            try:
+                ai_response = await client.chat.completions.create(
+                    model="gpt-4o-mini",
+                    messages=[
+                        {"role": "system", "content": "You are a trade finance strategist advising US small business importers. Be direct and actionable."},
+                        {"role": "user", "content": prompt}
+                    ],
+                    temperature=0.3,
+                    max_tokens=200
+                )
+                summary = ai_response.choices[0].message.content
+            except Exception:
+                pass
+
+        if not summary:
+            if total_delta > 0:
+                summary = (
+                    f"This scenario would increase your annual tariff cost by ${total_delta:,.0f} ({total_delta_pct:.1f}%). "
+                    f"Start modeling alternative sourcing options now — use the Sourcing Finder to identify lower-tariff countries "
+                    f"for your highest-exposure SKUs before this scenario materializes."
+                )
+            elif total_delta < 0:
+                summary = (
+                    f"This scenario would reduce your annual tariff cost by ${abs(total_delta):,.0f} ({abs(total_delta_pct):.1f}%) — "
+                    f"a significant opportunity. Position your supply chain now to capture these savings "
+                    f"if this scenario occurs by locking in supplier agreements in the benefiting countries."
+                )
+            else:
+                summary = "This scenario has minimal impact on your current tariff costs. Continue monitoring via your watchlists."
 
         # Recommended actions based on scenario
         actions = []
@@ -335,7 +355,5 @@ Keep it under 100 words. Plain English."""
 
     except HTTPException:
         raise
-    except openai.APIError as e:
-        raise HTTPException(status_code=503, detail=f"AI service error: {str(e)}")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Scenario run error: {str(e)}")
