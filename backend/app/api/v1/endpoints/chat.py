@@ -16,7 +16,7 @@ from app.models.hs_code import HSCode
 router = APIRouter()
 
 # Initialize OpenAI client
-client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
+client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY or "sk-not-configured")
 
 
 class ChatMessage(BaseModel):

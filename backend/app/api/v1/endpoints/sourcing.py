@@ -14,7 +14,7 @@ from app.core.config import settings
 from pydantic import BaseModel
 
 router = APIRouter()
-client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
+client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY or "sk-not-configured")
 
 # US tariff rates by origin country (stacked: MFN + active programs as of 2026)
 # Format: {country_code: (effective_rate, note, trade_agreement, risk_score)}

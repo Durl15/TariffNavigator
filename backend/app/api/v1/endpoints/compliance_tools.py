@@ -9,7 +9,7 @@ from openai import AsyncOpenAI
 from app.core.config import settings
 
 router = APIRouter()
-client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
+client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY or "sk-not-configured")
 
 SYSTEM_TRADE = "You are a U.S. Customs and trade compliance expert advising small business importers. Be concise, specific, and use plain English."
 

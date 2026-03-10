@@ -5,13 +5,12 @@ from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel
 from typing import Optional, List
 from datetime import datetime, timedelta
-import openai
 from openai import AsyncOpenAI
 
 from app.core.config import settings
 
 router = APIRouter()
-client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
+client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY or "sk-not-configured")
 
 TARIFF_RATES = {
     "CN": {"default": 0.25, "section_301": 0.25, "ieepa": 0.145},

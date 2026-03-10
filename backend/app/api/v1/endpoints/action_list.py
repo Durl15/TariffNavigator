@@ -20,7 +20,7 @@ from app.core.config import settings
 from pydantic import BaseModel
 
 router = APIRouter()
-client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
+client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY or "sk-not-configured")
 
 
 class Action(BaseModel):
