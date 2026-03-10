@@ -6,6 +6,8 @@ import {
   AlertTriangle, BarChart2, Clock
 } from 'lucide-react'
 import { getPublicStats, type PublicStats } from '../services/api'
+import { usePageTitle } from '../hooks/usePageTitle'
+
 
 const PROBLEMS = [
   { stat: '18%', label: 'Average effective tariff rate in 2026 (up from 2.4% in 2024)', color: 'text-red-500' },
@@ -139,6 +141,7 @@ const PRICING = [
 ]
 
 export default function LandingPage() {
+  usePageTitle('')
   const { data: stats } = useQuery<PublicStats>({
     queryKey: ['publicStats'],
     queryFn: getPublicStats,
@@ -218,11 +221,11 @@ export default function LandingPage() {
               <ArrowRight size={20} />
             </Link>
             <Link
-              to="/calculator"
+              to="/calculator?hs=8471.30&country=CN&value=50000&q=laptop+computer"
               className="flex items-center space-x-2 px-8 py-4 border border-blue-400 text-blue-200 hover:bg-brand-navy-light rounded-xl transition-colors text-lg"
             >
               <Calculator size={18} />
-              <span>Try Calculator</span>
+              <span>Try Free — Laptop from China</span>
             </Link>
           </div>
 

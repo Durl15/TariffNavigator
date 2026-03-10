@@ -6,6 +6,8 @@ import Navigation from '../components/Navigation'
 import { ComplianceExportButton } from '../components/ComplianceExportButton'
 import { SaveAnalysisButton } from '../components/SaveAnalysisButton'
 import { api } from '../services/api'
+import { usePageTitle } from '../hooks/usePageTitle'
+
 
 interface AlternativeCode {
   code: string
@@ -40,6 +42,7 @@ const RISK_TEXT: Record<string, string> = {
 }
 
 export default function HTSAuditPage() {
+  usePageTitle('HTS Code Audit')
   const navigate = useNavigate()
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<AuditResult | null>(null)

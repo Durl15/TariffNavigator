@@ -7,6 +7,8 @@ import { TierGate } from '../components/UpgradePrompt'
 import { ComplianceExportButton } from '../components/ComplianceExportButton'
 import { SaveAnalysisButton } from '../components/SaveAnalysisButton'
 import { api } from '../services/api'
+import { usePageTitle } from '../hooks/usePageTitle'
+
 
 interface RiskItem {
   risk_type: string
@@ -39,6 +41,7 @@ const RISK_BADGE: Record<string, string> = {
 }
 
 export default function SupplyChainPage() {
+  usePageTitle('Supply Chain Scanner')
   const navigate = useNavigate()
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<ScanResult | null>(null)

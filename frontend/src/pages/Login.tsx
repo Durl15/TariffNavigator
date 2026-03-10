@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Flame, Lock, Mail, ArrowRight, TrendingUp, Globe, Shield } from 'lucide-react';
+import { usePageTitle } from '../hooks/usePageTitle';
 
 const Login: React.FC = () => {
+  usePageTitle('Sign In');
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');

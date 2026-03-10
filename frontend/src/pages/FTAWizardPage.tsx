@@ -5,6 +5,8 @@ import WizardStep1TradeRoute from '../components/WizardStep1TradeRoute'
 import WizardStep2Documentation from '../components/WizardStep2Documentation'
 import WizardStep3Savings from '../components/WizardStep3Savings'
 import WizardStep4Review from '../components/WizardStep4Review'
+import { usePageTitle } from '../hooks/usePageTitle'
+
 
 export interface FTACheckResult {
   is_eligible: boolean
@@ -61,6 +63,7 @@ const initialState: WizardState = {
 }
 
 export default function FTAWizardPage() {
+  usePageTitle('FTA Wizard')
   const [state, setState] = useState<WizardState>(initialState)
   const navigate = useNavigate()
 

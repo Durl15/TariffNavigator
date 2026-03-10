@@ -6,6 +6,8 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import Navigation from '../components/Navigation'
 import OnboardingModal from '../components/OnboardingModal'
+import { usePageTitle } from '../hooks/usePageTitle'
+
 
 const URGENCY_BADGE: Record<string, string> = {
   high: 'bg-red-100 text-red-700',
@@ -14,6 +16,7 @@ const URGENCY_BADGE: Record<string, string> = {
 }
 
 export default function Dashboard() {
+  usePageTitle('Dashboard')
   const [isExporting, setIsExporting] = useState(false)
   const isAuthenticated = !!localStorage.getItem('token')
   const [showOnboarding, setShowOnboarding] = useState(

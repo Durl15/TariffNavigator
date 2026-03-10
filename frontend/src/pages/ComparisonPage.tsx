@@ -6,8 +6,11 @@ import { compareCalculations, exportComparisonPDF, exportComparisonCSV } from '.
 import ComparisonMetrics from '../components/ComparisonMetrics'
 import ComparisonTable from '../components/ComparisonTable'
 import toast from 'react-hot-toast'
+import { usePageTitle } from '../hooks/usePageTitle'
+
 
 export default function ComparisonPage() {
+  usePageTitle('Compare Products')
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
   const ids = searchParams.get('ids')?.split(',') || []

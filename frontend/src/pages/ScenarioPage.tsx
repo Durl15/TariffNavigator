@@ -9,6 +9,8 @@ import { TierGate } from '../components/UpgradePrompt'
 import { ComplianceExportButton } from '../components/ComplianceExportButton'
 import { SaveAnalysisButton } from '../components/SaveAnalysisButton'
 import { api, getCatalogs, type CatalogListResponse } from '../services/api'
+import { usePageTitle } from '../hooks/usePageTitle'
+
 
 interface Preset {
   id: string
@@ -56,6 +58,7 @@ const COLOR_MAP: Record<string, string> = {
 }
 
 export default function ScenarioPage() {
+  usePageTitle('Scenario Planner')
   const navigate = useNavigate()
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<ScenarioResult | null>(null)

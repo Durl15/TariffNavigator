@@ -144,11 +144,23 @@ function getBannerStyle(originCountry: string, usmcaQualifying: boolean): { wrap
 // Main Component
 // ============================================================================
 
-export function UsImportCalculator() {
-  const [originCountry, setOriginCountry] = useState('CN')
-  const [hsCode, setHsCode] = useState('')
-  const [searchQuery, setSearchQuery] = useState('')
-  const [cifValue, setCifValue] = useState('')
+interface UsImportCalculatorProps {
+  initialHsCode?: string
+  initialCountry?: string
+  initialCifValue?: string
+  initialQuery?: string
+}
+
+export function UsImportCalculator({
+  initialHsCode = '',
+  initialCountry = 'CN',
+  initialCifValue = '',
+  initialQuery = '',
+}: UsImportCalculatorProps = {}) {
+  const [originCountry, setOriginCountry] = useState(initialCountry)
+  const [hsCode, setHsCode] = useState(initialHsCode)
+  const [searchQuery, setSearchQuery] = useState(initialQuery)
+  const [cifValue, setCifValue] = useState(initialCifValue)
   const [usmcaQualifying, setUsmcaQualifying] = useState(true)
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<UsImportResult | null>(null)

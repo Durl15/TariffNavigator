@@ -16,8 +16,10 @@ import {
   type Notification,
 } from '../services/api'
 import Navigation from '../components/Navigation'
+import { usePageTitle } from '../hooks/usePageTitle'
 
 const NotificationsPage: React.FC = () => {
+  usePageTitle('Notifications')
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)

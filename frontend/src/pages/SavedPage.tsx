@@ -4,6 +4,8 @@ import { BookmarkCheck, Trash2, ArrowLeft, ExternalLink, Filter } from 'lucide-r
 import toast from 'react-hot-toast'
 import Navigation from '../components/Navigation'
 import { getAnalyses, deleteAnalysis, AnalysisRecord } from '../services/api'
+import { usePageTitle } from '../hooks/usePageTitle'
+
 
 // ── Config maps ───────────────────────────────────────────────────────────────
 
@@ -121,6 +123,7 @@ function buildPreview(form_data: Record<string, unknown> | null): Array<{ key: s
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function SavedPage() {
+  usePageTitle('Saved Analyses')
   const navigate = useNavigate()
   const isAuthenticated = !!localStorage.getItem('token')
 

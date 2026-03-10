@@ -4,6 +4,8 @@ import { User, Building2, CreditCard, BarChart2, ArrowLeft, Save, CheckCircle } 
 import toast from 'react-hot-toast'
 import Navigation from '../components/Navigation'
 import { getProfile, updateProfile, UserProfile } from '../services/api'
+import { usePageTitle } from '../hooks/usePageTitle'
+
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -42,6 +44,7 @@ function isPaidTier(role: string): boolean {
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function AccountPage() {
+  usePageTitle('Account')
   const navigate = useNavigate()
   const isAuthenticated = !!localStorage.getItem('token')
 

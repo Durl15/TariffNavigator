@@ -10,8 +10,10 @@ import {
 } from '../services/api'
 import Navigation from '../components/Navigation'
 import { Eye } from 'lucide-react'
+import { usePageTitle } from '../hooks/usePageTitle'
 
 const WatchlistsPage: React.FC = () => {
+  usePageTitle('Watchlists')
   const [watchlists, setWatchlists] = useState<Watchlist[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)

@@ -7,6 +7,8 @@ import Navigation from '../components/Navigation'
 import { api } from '../services/api'
 import { ComplianceExportButton } from '../components/ComplianceExportButton'
 import { SaveAnalysisButton } from '../components/SaveAnalysisButton'
+import { usePageTitle } from '../hooks/usePageTitle'
+
 
 interface ForecastResult {
   shipment_value: number
@@ -29,6 +31,7 @@ const RISK_COLORS: Record<string, string> = {
 }
 
 export default function CashFlowPage() {
+  usePageTitle('Cash Flow Forecaster')
   const navigate = useNavigate()
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<ForecastResult | null>(null)

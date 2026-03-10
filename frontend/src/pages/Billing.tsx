@@ -11,6 +11,8 @@ import {
 } from 'lucide-react';
 import { api } from '../services/api';
 import toast from 'react-hot-toast';
+import { usePageTitle } from '../hooks/usePageTitle'
+
 
 interface Subscription {
   id: string;
@@ -60,6 +62,7 @@ interface Invoice {
 }
 
 export default function Billing() {
+  usePageTitle('Billing')
   const navigate = useNavigate();
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [usage, setUsage] = useState<UsageStats | null>(null);

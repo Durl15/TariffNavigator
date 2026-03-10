@@ -6,8 +6,11 @@ import { getCatalogs, deleteCatalog, type CatalogListItem } from '../services/ap
 import toast from 'react-hot-toast'
 import Navigation from '../components/Navigation'
 import CatalogUploadModal from '../components/CatalogUploadModal'
+import { usePageTitle } from '../hooks/usePageTitle'
+
 
 export default function CatalogsPage() {
+  usePageTitle('Product Catalogs')
   const [showUploadModal, setShowUploadModal] = useState(false)
   const navigate = useNavigate()
   const queryClient = useQueryClient()

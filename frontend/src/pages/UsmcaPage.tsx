@@ -6,6 +6,8 @@ import Navigation from '../components/Navigation'
 import { ComplianceExportButton } from '../components/ComplianceExportButton'
 import { SaveAnalysisButton } from '../components/SaveAnalysisButton'
 import { api } from '../services/api'
+import { usePageTitle } from '../hooks/usePageTitle'
+
 
 interface UsmcaResult {
   origin_country: string
@@ -20,6 +22,7 @@ interface UsmcaResult {
 }
 
 export default function UsmcaPage() {
+  usePageTitle('USMCA Checker')
   const navigate = useNavigate()
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<UsmcaResult | null>(null)

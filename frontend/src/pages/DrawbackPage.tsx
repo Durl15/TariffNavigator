@@ -6,6 +6,8 @@ import Navigation from '../components/Navigation'
 import { api } from '../services/api'
 import { ComplianceExportButton } from '../components/ComplianceExportButton'
 import { SaveAnalysisButton } from '../components/SaveAnalysisButton'
+import { usePageTitle } from '../hooks/usePageTitle'
+
 
 interface DrawbackResult {
   eligible: boolean
@@ -20,6 +22,7 @@ interface DrawbackResult {
 }
 
 export default function DrawbackPage() {
+  usePageTitle('Duty Drawback Finder')
   const navigate = useNavigate()
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<DrawbackResult | null>(null)

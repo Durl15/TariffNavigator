@@ -6,6 +6,8 @@ import Navigation from '../components/Navigation'
 import { ComplianceExportButton } from '../components/ComplianceExportButton'
 import { SaveAnalysisButton } from '../components/SaveAnalysisButton'
 import { api } from '../services/api'
+import { usePageTitle } from '../hooks/usePageTitle'
+
 
 interface SourcingAlternative {
   country_code: string
@@ -59,6 +61,7 @@ const COUNTRIES = [
 ]
 
 export default function SourcingPage() {
+  usePageTitle('Alternative Sourcing')
   const navigate = useNavigate()
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<SourcingResult | null>(null)

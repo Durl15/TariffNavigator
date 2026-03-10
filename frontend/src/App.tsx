@@ -1,5 +1,5 @@
 ﻿import { useState, useEffect } from 'react'
-import { BrowserRouter as Router, Routes, Route, useNavigate } from 'react-router-dom'
+import { BrowserRouter as Router, Routes, Route, useNavigate, useSearchParams } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import './index.css'
 import Navigation from './components/Navigation'
@@ -464,12 +464,17 @@ function CostCalculator() {
 // Main calculator page component
 function CalculatorPage() {
   const [mode, setMode] = useState<'us-import' | 'export'>('us-import')
+  const [searchParams] = useSearchParams()
   const handleLogout = () => {
     localStorage.removeItem('token');
     window.location.href = '/';
   };
 
   const isAuthenticated = !!localStorage.getItem('token');
+  const prefilledHs      = searchParams.get('hs') || ''
+  const prefilledCountry = searchParams.get('country') || 'CN'
+  const prefilledValue   = searchParams.get('value') || ''
+  const prefilledQuery   = searchParams.get('q') || ''
 
   return (
     <div className="min-h-screen bg-gray-50 font-sans">
@@ -518,7 +523,14 @@ function CalculatorPage() {
 
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="bg-white rounded-xl shadow-card border border-gray-100 p-6 sm:p-8">
-          {mode === 'us-import' ? <UsImportCalculator /> : <CostCalculator />}
+          {mode === 'us-import'
+            ? <UsImportCalculator
+                initialHsCode={prefilledHs}
+                initialCountry={prefilledCountry}
+                initialCifValue={prefilledValue}
+                initialQuery={prefilledQuery}
+              />
+            : <CostCalculator />}
         </div>
 
         <footer className="mt-10 py-4 border-t border-gray-200">

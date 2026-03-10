@@ -3,6 +3,8 @@ import { Check, X, Zap, Shield, Star, Package, ChevronDown, ChevronUp } from 'lu
 import { api } from '../services/api';
 import toast from 'react-hot-toast';
 import Navigation from '../components/Navigation';
+import { usePageTitle } from '../hooks/usePageTitle'
+
 
 interface PlanFeature {
   name: string;
@@ -138,6 +140,7 @@ const faqs = [
 ];
 
 export default function Pricing() {
+  usePageTitle('Pricing')
   const [loading, setLoading] = useState<string | null>(null);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
 

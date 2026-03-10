@@ -25,10 +25,13 @@ import {
 } from 'lucide-react'
 import { getCatalogImpact, type CatalogItem } from '../services/api'
 import toast from 'react-hot-toast'
+import { usePageTitle } from '../hooks/usePageTitle'
+
 
 const COLORS = ['#4F46E5', '#06B6D4', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899']
 
 export default function CatalogImpactPage() {
+  usePageTitle('Catalog Impact')
   const { catalogId } = useParams<{ catalogId: string }>()
   const navigate = useNavigate()
   const [destinationCountry, setDestinationCountry] = useState('CN')

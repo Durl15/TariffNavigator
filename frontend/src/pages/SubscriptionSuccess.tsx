@@ -1,132 +1,135 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import { CheckCircle, ArrowRight } from 'lucide-react';
-import { api } from '../services/api';
+import { Link, useSearchParams } from 'react-router-dom';
+import { CheckCircle, ArrowRight, Zap, Shield, Star, LayoutDashboard } from 'lucide-react';
+import Navigation from '../components/Navigation';
+import { usePageTitle } from '../hooks/usePageTitle'
+
+
+const PLAN_INFO: Record<string, { label: string; iconBg: string; icon: React.ReactNode; perks: string[] }> = {
+  pro: {
+    label: 'Pro',
+    iconBg: 'linear-gradient(135deg,#0D9488,#14B8A6)',
+    icon: <Zap className="w-5 h-5 text-white" />,
+    perks: [
+      'Unlimited tariff lookups',
+      '10 watchlists',
+      '3 product catalogs',
+      'All alert types & email digests',
+      'PDF & CSV exports',
+    ],
+  },
+  enterprise: {
+    label: 'Enterprise',
+    iconBg: 'linear-gradient(135deg,#1E3A5F,#264875)',
+    icon: <Shield className="w-5 h-5 text-white" />,
+    perks: [
+      'Unlimited everything',
+      '10 team seats',
+      'Full API access',
+      'AI-powered insights',
+      'Priority support',
+    ],
+  },
+  consultant: {
+    label: 'Consultant',
+    iconBg: 'linear-gradient(135deg,#D4A843,#E8C066)',
+    icon: <Star className="w-5 h-5 text-white" />,
+    perks: [
+      'White-label PDF exports',
+      '50 team seats',
+      'Full API access',
+      'Custom integrations',
+      'Dedicated account manager',
+    ],
+  },
+};
 
 export default function SubscriptionSuccess() {
+  usePageTitle('Subscription Confirmed')
   const [searchParams] = useSearchParams();
-  const navigate = useNavigate();
-  const [loading, setLoading] = useState(true);
-  const [subscription, setSubscription] = useState<any>(null);
+  const plan = searchParams.get('plan') || 'pro';
+  const info = PLAN_INFO[plan] || PLAN_INFO.pro;
+  const [countdown, setCountdown] = useState(8);
 
-  const sessionId = searchParams.get('session_id');
-
+  // Auto-redirect to dashboard
   useEffect(() => {
-    // Fetch current subscription to confirm upgrade
-    const fetchSubscription = async () => {
-      try {
-        const response = await api.get('/subscriptions/current');
-        setSubscription(response.data.subscription);
-      } catch (error) {
-        console.error('Error fetching subscription:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
+    if (countdown <= 0) { window.location.href = '/dashboard'; return; }
+    const t = setTimeout(() => setCountdown(c => c - 1), 1000);
+    return () => clearTimeout(t);
+  }, [countdown]);
 
-    // Wait a moment for webhook to process
-    setTimeout(fetchSubscription, 2000);
-  }, [sessionId]);
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Processing your subscription...</p>
-        </div>
-      </div>
-    );
-  }
+  const isAuthenticated = !!localStorage.getItem('token');
+  const handleLogout = () => { localStorage.removeItem('token'); window.location.href = '/'; };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
-      <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-8 text-center">
-        {/* Success Icon */}
-        <div className="mb-6">
-          <CheckCircle className="h-20 w-20 text-green-500 mx-auto" />
+    <div>
+      <Navigation isAuthenticated={isAuthenticated} onLogout={handleLogout} />
+
+      {/* Hero */}
+      <div className="page-hero py-16 text-center">
+        <div className="max-w-xl mx-auto px-4">
+          <div className="w-20 h-20 rounded-2xl flex items-center justify-center mx-auto mb-6"
+               style={{ background: 'linear-gradient(135deg,#0D9488,#14B8A6)', boxShadow: '0 0 32px rgba(13,148,136,0.4)' }}>
+            <CheckCircle className="w-10 h-10 text-white" />
+          </div>
+          <h1 className="text-3xl font-bold text-white mb-3">You're all set!</h1>
+          <p className="text-blue-200 text-lg">
+            Welcome to <span className="font-bold text-white">TariffNavigator {info.label}</span>.
+            Your account has been upgraded.
+          </p>
         </div>
+      </div>
 
-        {/* Success Message */}
-        <h1 className="text-3xl font-bold text-gray-900 mb-4">
-          Welcome to {subscription?.plan || 'Pro'}!
-        </h1>
+      <div className="max-w-xl mx-auto px-4 py-10 space-y-6">
 
-        <p className="text-gray-600 mb-8">
-          Your subscription has been activated successfully. You now have access to all premium features.
-        </p>
-
-        {/* Subscription Details */}
-        {subscription && (
-          <div className="bg-gray-50 rounded-lg p-6 mb-8 text-left">
-            <h2 className="font-semibold text-gray-900 mb-4">Subscription Details</h2>
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-gray-600">Plan:</span>
-                <span className="font-semibold text-gray-900 capitalize">{subscription.plan}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Status:</span>
-                <span className="font-semibold text-green-600 capitalize">{subscription.status}</span>
-              </div>
-              {subscription.current_period_end && (
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Next billing:</span>
-                  <span className="font-semibold text-gray-900">
-                    {new Date(subscription.current_period_end).toLocaleDateString()}
-                  </span>
-                </div>
-              )}
+        {/* Plan card */}
+        <div className="card p-8 animate-in">
+          {/* Plan badge */}
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                 style={{ background: info.iconBg }}>
+              {info.icon}
+            </div>
+            <div>
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest">Active Plan</p>
+              <p className="text-lg font-bold text-brand-navy">{info.label}</p>
             </div>
           </div>
-        )}
 
-        {/* New Features */}
-        <div className="bg-blue-50 rounded-lg p-6 mb-8 text-left">
-          <h2 className="font-semibold text-gray-900 mb-4">What's New?</h2>
-          <ul className="space-y-2 text-sm text-gray-700">
-            <li className="flex items-start">
-              <CheckCircle className="h-4 w-4 text-blue-600 mr-2 mt-0.5 flex-shrink-0" />
-              <span>Increased calculation limit</span>
-            </li>
-            <li className="flex items-start">
-              <CheckCircle className="h-4 w-4 text-blue-600 mr-2 mt-0.5 flex-shrink-0" />
-              <span>Create up to 10 watchlists</span>
-            </li>
-            <li className="flex items-start">
-              <CheckCircle className="h-4 w-4 text-blue-600 mr-2 mt-0.5 flex-shrink-0" />
-              <span>Email alerts for tariff changes</span>
-            </li>
-            <li className="flex items-start">
-              <CheckCircle className="h-4 w-4 text-blue-600 mr-2 mt-0.5 flex-shrink-0" />
-              <span>External monitoring (Federal Register, CBP)</span>
-            </li>
-          </ul>
+          {/* Perks */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mb-8">
+            {info.perks.map(perk => (
+              <div key={perk} className="flex items-center gap-2 text-sm text-gray-700">
+                <div className="w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0"
+                     style={{ background: 'linear-gradient(135deg,#0D9488,#14B8A6)' }}>
+                  <CheckCircle className="w-2.5 h-2.5 text-white" />
+                </div>
+                {perk}
+              </div>
+            ))}
+          </div>
+
+          {/* CTAs */}
+          <div className="flex flex-col sm:flex-row gap-3">
+            <Link to="/dashboard"
+                  className="btn btn-teal flex-1 py-3 text-sm flex items-center justify-center gap-2">
+              <LayoutDashboard className="w-4 h-4" /> Go to Dashboard
+            </Link>
+            <Link to="/calculator"
+                  className="btn btn-outline flex-1 py-3 text-sm flex items-center justify-center gap-2">
+              Open Calculator <ArrowRight className="w-4 h-4" />
+            </Link>
+          </div>
+
+          <p className="text-center text-xs text-gray-400 mt-5">
+            Redirecting to dashboard in {countdown}s…
+          </p>
         </div>
 
-        {/* Action Buttons */}
-        <div className="space-y-3">
-          <button
-            onClick={() => navigate('/dashboard')}
-            className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-blue-700 transition-colors flex items-center justify-center"
-          >
-            Go to Dashboard
-            <ArrowRight className="ml-2 h-5 w-5" />
-          </button>
-
-          <button
-            onClick={() => navigate('/watchlists')}
-            className="w-full bg-white text-gray-700 py-3 px-6 rounded-lg font-semibold border-2 border-gray-300 hover:bg-gray-50 transition-colors"
-          >
-            Create Your First Watchlist
-          </button>
-        </div>
-
-        {/* Footer */}
-        <p className="text-sm text-gray-500 mt-6">
-          Need help getting started?{' '}
-          <a href="/help" className="text-blue-600 hover:text-blue-700 font-medium">
-            View our guide
+        <p className="text-center text-sm text-gray-500">
+          Questions?{' '}
+          <a href="mailto:support@tariffnavigator.com" className="text-brand-teal hover:underline font-medium">
+            support@tariffnavigator.com
           </a>
         </p>
       </div>
