@@ -444,5 +444,47 @@ class EmailService:
             return False
 
 
+    async def send_password_reset_email(
+        self,
+        to_email: str,
+        user_name: str,
+        reset_url: str,
+    ) -> bool:
+        """Send password reset link email."""
+        try:
+            html_body = f"""
+            <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;background:#fff;">
+              <div style="background:#1E3A5F;padding:32px 40px;border-radius:8px 8px 0 0;">
+                <h1 style="color:#fff;margin:0;font-size:24px;">🔐 Reset Your Password</h1>
+                <p style="color:#93C5FD;margin:8px 0 0;">TariffNavigator · DJ AI Business Consultant</p>
+              </div>
+              <div style="padding:32px 40px;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 8px 8px;">
+                <p style="color:#374151;font-size:16px;">Hi {user_name},</p>
+                <p style="color:#374151;">We received a request to reset your TariffNavigator password.
+                   Click the button below to choose a new one. This link expires in <strong>1 hour</strong>.</p>
+                <div style="text-align:center;margin:32px 0;">
+                  <a href="{reset_url}"
+                     style="background:#0D9488;color:#fff;padding:14px 32px;border-radius:8px;
+                            text-decoration:none;font-weight:bold;font-size:16px;display:inline-block;">
+                    Reset Password
+                  </a>
+                </div>
+                <p style="color:#6B7280;font-size:14px;">
+                  If you didn't request this, you can safely ignore this email — your password won't change.
+                </p>
+                <hr style="border:none;border-top:1px solid #e5e7eb;margin:24px 0;">
+                <p style="color:#9CA3AF;font-size:12px;text-align:center;">
+                  © 2025 DJ AI Business Consultant LLC · Syracuse, NY<br>
+                  TariffNavigator™ · support@tariffnavigator.com
+                </p>
+              </div>
+            </div>
+            """
+            return await self.send_email(to_email, "Reset your TariffNavigator password", html_body)
+        except Exception as e:
+            logger.error(f"Failed to send password reset email: {e}")
+            return False
+
+
 # Global instance
 email_service = EmailService()

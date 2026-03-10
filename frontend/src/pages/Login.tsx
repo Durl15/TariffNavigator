@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { Flame, Lock, Mail, ArrowRight, TrendingUp, Globe, Shield } from 'lucide-react';
 import { usePageTitle } from '../hooks/usePageTitle';
 import Footer from '../components/Footer'
@@ -163,9 +163,14 @@ const Login: React.FC = () => {
               </div>
 
               <div>
-                <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1.5">
-                  Password
-                </label>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+                    Password
+                  </label>
+                  <Link to="/forgot-password" className="text-xs text-brand-teal hover:underline font-medium">
+                    Forgot password?
+                  </Link>
+                </div>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                   <input
@@ -220,8 +225,11 @@ const Login: React.FC = () => {
             </div>
 
             <div className="mt-5 pt-5 border-t border-gray-100 text-center">
-              <p className="text-xs text-gray-400">
-                Secured with 256-bit encryption
+              <p className="text-sm text-gray-500">
+                Don't have an account?{' '}
+                <Link to="/register" className="text-brand-teal hover:underline font-semibold">
+                  Create one free →
+                </Link>
               </p>
             </div>
           </div>

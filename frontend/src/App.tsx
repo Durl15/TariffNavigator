@@ -10,6 +10,9 @@ import Users from './pages/admin/Users'
 import Organizations from './pages/admin/Organizations'
 import AuditLogs from './pages/admin/AuditLogs'
 import Login from './pages/Login'
+import RegisterPage from './pages/RegisterPage'
+import ForgotPasswordPage from './pages/ForgotPasswordPage'
+import ResetPasswordPage from './pages/ResetPasswordPage'
 import LandingPage from './pages/LandingPage'
 import UserDashboard from './pages/Dashboard'
 import ComparisonPage from './pages/ComparisonPage'
@@ -586,8 +589,11 @@ function App() {
         <Route path="/account" element={<AccountPage />} />
         <Route path="/saved" element={<SavedPage />} />
 
-        {/* Login route */}
+        {/* Auth routes */}
         <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<RegisterPage />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
 
         {/* Admin routes */}
         <Route path="/admin" element={<AdminLayout />}>
