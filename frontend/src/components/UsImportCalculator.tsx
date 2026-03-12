@@ -711,8 +711,6 @@ export function UsImportCalculator({
             </div>
           )}
 
-        </div>
-
           {/* Rate history chart */}
           <RateHistoryChart
             htsno={result.hs_code}
@@ -720,7 +718,7 @@ export function UsImportCalculator({
             countryName={selectedCountry?.name ?? result.origin_country}
           />
 
-      </div>
+        </div>
       )}
     </div>
   )
