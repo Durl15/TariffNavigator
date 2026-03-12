@@ -1,8 +1,8 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts'
-import { Zap, ArrowLeft, TrendingUp, TrendingDown, AlertTriangle, ChevronDown, ChevronUp } from 'lucide-react'
+import { Zap, ArrowLeft, TrendingUp, TrendingDown, AlertTriangle, ChevronDown, ChevronUp, RotateCcw } from 'lucide-react'
 import toast from 'react-hot-toast'
 import Navigation from '../components/Navigation'
 import { TierGate } from '../components/UpgradePrompt'
@@ -11,6 +11,7 @@ import { SaveAnalysisButton } from '../components/SaveAnalysisButton'
 import { api, getCatalogs, type CatalogListResponse } from '../services/api'
 import { usePageTitle } from '../hooks/usePageTitle'
 import Footer from '../components/Footer'
+import { getSearchContext, type SearchContext } from '../store/searchContext'
 
 
 
@@ -66,6 +67,7 @@ export default function ScenarioPage() {
   const [result, setResult] = useState<ScenarioResult | null>(null)
   const [selectedPreset, setSelectedPreset] = useState<string>('')
   const [showItems, setShowItems] = useState(false)
+  const [originalContext, setOriginalContext] = useState<SearchContext | null>(null)
   const [form, setForm] = useState({
     catalog_id: '',
     annual_import_value: '',
@@ -78,6 +80,29 @@ export default function ScenarioPage() {
   })
 
   const isAuthenticated = !!localStorage.getItem('token')
+
+  // Pre-populate from calculator context on mount
+  useEffect(() => {
+    const ctx = getSearchContext()
+    if (ctx) {
+      setOriginalContext(ctx)
+      setForm(f => ({
+        ...f,
+        annual_import_value: ctx.cif_value,
+        country_of_origin: ctx.country,
+      }))
+    }
+  }, [])
+
+  const handleResetToOriginal = () => {
+    if (!originalContext) return
+    setForm(f => ({
+      ...f,
+      annual_import_value: originalContext.cif_value,
+      country_of_origin: originalContext.country,
+    }))
+    setResult(null)
+  }
 
   const { data: presetsData } = useQuery<Preset[]>({
     queryKey: ['scenario-presets'],
@@ -232,7 +257,29 @@ export default function ScenarioPage() {
 
               {/* Data source */}
               <div className="bg-white rounded-xl shadow-card border border-gray-100 p-5">
-                <h3 className="font-semibold text-brand-navy text-sm mb-3">Apply To</h3>
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="font-semibold text-brand-navy text-sm">Apply To</h3>
+                  {originalContext && (
+                    <button
+                      type="button"
+                      onClick={handleResetToOriginal}
+                      className="flex items-center gap-1 text-xs font-medium text-brand-blue hover:text-brand-navy transition-colors"
+                    >
+                      <RotateCcw size={11} />
+                      Reset
+                    </button>
+                  )}
+                </div>
+                {originalContext && (
+                  <div className="mb-3 px-2.5 py-2 bg-brand-navy/5 border border-brand-navy/15 rounded-lg">
+                    <p className="text-xs font-semibold text-brand-navy uppercase tracking-wide mb-0.5">From your last search</p>
+                    <p className="text-xs text-gray-600 font-mono truncate">{originalContext.hts_code}</p>
+                    {originalContext.product_description && (
+                      <p className="text-xs text-gray-500 truncate">{originalContext.product_description}</p>
+                    )}
+                    <p className="text-xs text-gray-400 mt-0.5">{originalContext.duty_rate.toFixed(1)}% effective rate</p>
+                  </div>
+                )}
 
                 {isAuthenticated && catalogs?.catalogs?.length ? (
                   <div className="mb-3">

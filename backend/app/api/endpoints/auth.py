@@ -140,19 +140,27 @@ async def read_users_me(
     """Get current authenticated user information with usage stats."""
     # Count calculator lookups this month
     month_start = datetime.utcnow().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-    calc_result = await db.execute(
-        select(func.count(Calculation.id)).where(
-            Calculation.user_id == current_user.id,
-            Calculation.created_at >= month_start,
+    try:
+        calc_result = await db.execute(
+            select(func.count(Calculation.id)).where(
+                Calculation.user_id == current_user.id,
+                Calculation.created_at >= month_start,
+            )
         )
-    )
-    monthly_calculations = calc_result.scalar() or 0
+        monthly_calculations = calc_result.scalar() or 0
+    except Exception:
+        await db.rollback()
+        monthly_calculations = 0
 
     # Count saved analyses
-    saved_result = await db.execute(
-        select(func.count(ToolAnalysis.id)).where(ToolAnalysis.user_id == current_user.id)
-    )
-    saved_analyses = saved_result.scalar() or 0
+    try:
+        saved_result = await db.execute(
+            select(func.count(ToolAnalysis.id)).where(ToolAnalysis.user_id == current_user.id)
+        )
+        saved_analyses = saved_result.scalar() or 0
+    except Exception:
+        await db.rollback()
+        saved_analyses = 0
 
     # Tier limits
     tier_limits = {

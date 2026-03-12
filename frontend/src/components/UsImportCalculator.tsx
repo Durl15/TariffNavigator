@@ -4,6 +4,7 @@ import toast from 'react-hot-toast'
 import { Loader2, AlertTriangle, CheckCircle, TrendingUp, DollarSign, Package, Percent } from 'lucide-react'
 import { api } from '../services/api'
 import RateHistoryChart from './RateHistoryChart'
+import { saveSearchContext, clearSearchContext } from '../store/searchContext'
 
 // ============================================================================
 // Interfaces
@@ -257,6 +258,7 @@ export function UsImportCalculator({
     setShowSuggestions(false)
     setResult(null)
     setLimitError(null)
+    clearSearchContext()
   }
 
   // --------------------------------------------------------------------------
@@ -286,6 +288,13 @@ export function UsImportCalculator({
         }
       )
       setResult(res.data)
+      saveSearchContext({
+        hts_code: hsCode,
+        product_description: searchQuery.replace(`${hsCode} — `, '').trim(),
+        country: originCountry,
+        cif_value: cifValue,
+        duty_rate: res.data.calculation.effective_rate,
+      })
       toast.success('Calculation complete')
     } catch (error: unknown) {
       const err = error as { response?: { status?: number; data?: { detail?: unknown } } }

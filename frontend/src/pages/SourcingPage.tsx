@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Globe, ArrowLeft, Star, TrendingDown, AlertTriangle, CheckCircle } from 'lucide-react'
+import { Globe, ArrowLeft, Star, TrendingDown, AlertTriangle, CheckCircle, RotateCcw } from 'lucide-react'
 import toast from 'react-hot-toast'
 import Navigation from '../components/Navigation'
 import { ComplianceExportButton } from '../components/ComplianceExportButton'
@@ -8,6 +8,7 @@ import { SaveAnalysisButton } from '../components/SaveAnalysisButton'
 import { api } from '../services/api'
 import { usePageTitle } from '../hooks/usePageTitle'
 import Footer from '../components/Footer'
+import { getSearchContext, type SearchContext } from '../store/searchContext'
 
 
 
@@ -67,6 +68,7 @@ export default function SourcingPage() {
   const navigate = useNavigate()
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<SourcingResult | null>(null)
+  const [originalContext, setOriginalContext] = useState<SearchContext | null>(null)
   const [form, setForm] = useState({
     hts_code: '',
     current_country: 'CN',
@@ -74,6 +76,29 @@ export default function SourcingPage() {
   })
 
   const isAuthenticated = !!localStorage.getItem('token')
+
+  // Pre-populate from calculator context on mount
+  useEffect(() => {
+    const ctx = getSearchContext()
+    if (ctx) {
+      setOriginalContext(ctx)
+      setForm({
+        hts_code: ctx.hts_code,
+        current_country: ctx.country,
+        annual_import_value: ctx.cif_value,
+      })
+    }
+  }, [])
+
+  const handleResetToOriginal = () => {
+    if (!originalContext) return
+    setForm({
+      hts_code: originalContext.hts_code,
+      current_country: originalContext.country,
+      annual_import_value: originalContext.cif_value,
+    })
+    setResult(null)
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -116,17 +141,54 @@ export default function SourcingPage() {
 
         {/* Form */}
         <div className="card p-6 mb-6">
+          {/* Context banner — shown when pre-populated from calculator */}
+          {originalContext && (
+            <div className="flex items-center justify-between gap-3 mb-4 px-3 py-2.5 bg-brand-navy/5 border border-brand-navy/20 rounded-lg">
+              <div className="min-w-0">
+                <p className="text-xs font-semibold text-brand-navy uppercase tracking-wide mb-0.5">Pre-filled from your last search</p>
+                <p className="text-sm text-gray-700 truncate">
+                  <span className="font-mono font-bold">{originalContext.hts_code}</span>
+                  {originalContext.product_description && (
+                    <span className="text-gray-500"> — {originalContext.product_description}</span>
+                  )}
+                  <span className="ml-2 text-xs text-gray-400">({originalContext.duty_rate.toFixed(1)}% effective rate)</span>
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={handleResetToOriginal}
+                className="flex items-center gap-1 text-xs font-medium text-brand-blue hover:text-brand-navy shrink-0 transition-colors"
+              >
+                <RotateCcw size={12} />
+                Reset
+              </button>
+            </div>
+          )}
+
           <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-4 items-end">
             <div className="flex-1">
               <label className="block text-sm font-medium text-gray-700 mb-1">HTS Code *</label>
-              <input
-                required
-                type="text"
-                placeholder="e.g. 8471.30"
-                value={form.hts_code}
-                onChange={e => setForm(f => ({ ...f, hts_code: e.target.value }))}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-blue"
-              />
+              {originalContext && form.hts_code === originalContext.hts_code ? (
+                <div className="flex items-center justify-between px-3 py-2 bg-brand-navy/5 border border-brand-navy/20 rounded-lg">
+                  <span className="font-mono text-sm font-bold text-brand-navy">{form.hts_code}</span>
+                  <button
+                    type="button"
+                    onClick={() => setForm(f => ({ ...f, hts_code: '' }))}
+                    className="text-xs text-brand-blue hover:text-brand-navy font-medium ml-3 shrink-0"
+                  >
+                    Change
+                  </button>
+                </div>
+              ) : (
+                <input
+                  required
+                  type="text"
+                  placeholder="e.g. 8471.30"
+                  value={form.hts_code}
+                  onChange={e => setForm(f => ({ ...f, hts_code: e.target.value }))}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-blue"
+                />
+              )}
             </div>
             <div className="w-48">
               <label className="block text-sm font-medium text-gray-700 mb-1">Current Origin</label>
