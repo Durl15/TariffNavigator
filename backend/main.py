@@ -3,12 +3,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from app.api.v1.api import api_router
 from app.core.config import settings
-from app.middleware.rate_limit 
+from app.middleware.rate_limit import RateLimitMiddleware
 from app.middleware.license import LicenseMiddleware
-import RateLimitMiddleware
 import logging
 import time
-
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
