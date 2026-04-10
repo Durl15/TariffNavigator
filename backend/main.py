@@ -3,7 +3,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from app.api.v1.api import api_router
 from app.core.config import settings
-from app.middleware.rate_limit import RateLimitMiddleware
+from app.middleware.rate_limit 
+from app.middleware.license import LicenseMiddleware
+import RateLimitMiddleware
 import logging
 import time
 
@@ -29,9 +31,15 @@ async def log_requests(request: Request, call_next):
 # CORS configuration - reads from CORS_ORIGINS environment variable
 # In production, set: CORS_ORIGINS=https://yourfrontend.com,https://anotherdomain.com
 # The Settings class automatically parses comma-separated values into a list
+#
+# allow_origin_regex covers:
+#   - All Vercel preview + production deployments  (*.vercel.app)
+#   - All Render-hosted frontends                  (*.onrender.com)
+# This means you never need to update CORS when Vercel rotates deployment URLs.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.CORS_ORIGINS,
+    allow_origin_regex=r"https://(.*\.vercel\.app|.*\.onrender\.com)",
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     allow_headers=["*"],
@@ -39,6 +47,7 @@ app.add_middleware(
 
 # Add rate limiting middleware (AFTER CORS, BEFORE routes)
 app.add_middleware(RateLimitMiddleware)
+app.add_middleware(LicenseMiddleware)
 
 app.include_router(api_router, prefix="/api/v1")
 
