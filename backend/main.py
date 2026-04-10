@@ -203,16 +203,7 @@ async def startup_event():
     except Exception as e:
         logger.error(f"Migration failed: {e}")
 
-    # Create admin user
-    try:
-        result = subprocess.run(
-            ["python", "create_admin.py"],
-            capture_output=True, text=True
-        )
-        logger.info(f"Admin: {result.stdout}")
-    except Exception as e:
-        logger.error(f"Admin creation failed: {e}")
-
+   
     # Start scheduler and background tasks
     start_scheduler()
     asyncio.create_task(warm_cache())
