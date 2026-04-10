@@ -223,14 +223,62 @@ async def shutdown_event():
 @app.get("/pricing", response_class=HTMLResponse)
 async def pricing():
     return """<!DOCTYPE html><html><head><title>Pricing - Tariff Navigator</title>
-    <style>body{font-family:Arial,sans-serif;max-width:800px;margin:50px auto;padding:20px;background:#f5f5f5}h1{color:#667eea;text-align:center}.plan{background:white;padding:30px;margin:20px 0;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,.1)}.price{font-size:2.5em;color:#667eea;font-weight:bold}.features{list-style:none;padding:0}.features li{padding:10px 0;border-bottom:1px solid #eee}.features li:before{content:"✓ ";color:#48bb78;font-weight:bold}.button{display:inline-block;background:#667eea;color:white;padding:12px 30px;text-decoration:none;border-radius:5px;margin-top:15px}.featured{border:3px solid #667eea}.nav{text-align:center;margin-bottom:30px}.nav a{margin:0 15px;color:#667eea;text-decoration:none}</style></head>
-    <body><div class="nav"><a href="/">Home</a><a href="/app">Calculator</a><a href="/pricing">Pricing</a></div>
-    <h1>Pricing Plans</h1>
-    <div class="plan"><h2>Free</h2><div class="price">$0<span style="font-size:.4em;color:#666">/month</span></div><ul class="features"><li>100 calculations/month</li><li>China & EU tariffs</li><li>Basic currency conversion</li></ul><a href="/app" class="button">Get Started</a></div>
-    <div class="plan featured"><h2>Professional</h2><div class="price">$29<span style="font-size:.4em;color:#666">/month</span></div><ul class="features"><li>10,000 calculations/month</li><li>All countries (50+)</li><li>FTA eligibility checking</li><li>API access</li></ul><a href="/app" class="button">Start Free Trial</a></div>
-    <div class="plan"><h2>Enterprise</h2><div class="price">$299<span style="font-size:.4em;color:#666">/month</span></div><ul class="features"><li>Unlimited calculations</li><li>White-label solution</li><li>Dedicated account manager</li></ul><a href="mailto:sales@tariffnavigator.com" class="button">Contact Sales</a></div>
+    <style>body{font-family:Arial,sans-serif;margin:0;padding:0;background:#f5f5f5}.nav{text-align:center;padding:20px;background:white}.nav a{margin:0 20px;color:#667eea;text-decoration:none;font-weight:bold}.hero{background:linear-gradient(135deg,#667eea,#764ba2);color:white;padding:60px 20px;text-align:center}.hero h1{font-size:2.5em;margin-bottom:10px}.hero p{font-size:1.2em;opacity:.9}.plans{max-width:1000px;margin:50px auto;padding:20px;display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:30px}.plan{background:white;padding:35px;border-radius:12px;box-shadow:0 2px 15px rgba(0,0,0,.08);position:relative}.plan.featured{border:3px solid #667eea}.badge{position:absolute;top:-14px;left:50%;transform:translateX(-50%);background:#667eea;color:white;padding:4px 20px;border-radius:20px;font-size:13px;font-weight:bold;white-space:nowrap}.plan h2{color:#333;font-size:1.4em;margin-bottom:5px}.plan .sub{color:#888;font-size:13px;margin-bottom:20px}.price{font-size:2.8em;color:#667eea;font-weight:bold;margin:15px 0 5px}.price span{font-size:.35em;color:#888;font-weight:normal}.annual{font-size:13px;color:#48bb78;margin-bottom:20px}.features{list-style:none;padding:0;margin:20px 0}.features li{padding:9px 0;border-bottom:1px solid #f0f0f0;font-size:14px;color:#444}.features li:before{content:"✓ ";color:#48bb78;font-weight:bold}.button{display:block;text-align:center;background:#667eea;color:white;padding:14px;text-decoration:none;border-radius:8px;margin-top:25px;font-weight:bold;font-size:15px}.button:hover{background:#5a67d8}.button.outline{background:transparent;border:2px solid #667eea;color:#667eea}.footer{text-align:center;padding:40px 20px;color:#888;font-size:14px}.footer a{color:#667eea}</style></head>
+    <body>
+    <div class="nav"><a href="/">Home</a><a href="/app">Calculator</a><a href="/pricing">Pricing</a></div>
+    <div class="hero"><h1>Simple, Transparent Pricing</h1><p>Save thousands on import duties. Pay a fraction of that to know how.</p></div>
+    <div class="plans">
+      <div class="plan">
+        <h2>Starter</h2>
+        <div class="sub">For small importers and trade consultants</div>
+        <div class="price">$97<span>/month</span></div>
+        <div class="annual">Or $970/year — save 2 months</div>
+        <ul class="features">
+          <li>Tariff lookup — 50+ countries</li>
+          <li>HTS code search</li>
+          <li>Basic FTA eligibility check</li>
+          <li>100 calculations/month</li>
+          <li>Email support</li>
+        </ul>
+        <a href="mailto:don@djaibc.com?subject=TariffNavigator Starter" class="button outline">Get Started</a>
+      </div>
+      <div class="plan featured">
+        <div class="badge">Most Popular</div>
+        <h2>Professional</h2>
+        <div class="sub">For procurement managers and freight brokers</div>
+        <div class="price">$297<span>/month</span></div>
+        <div class="annual">Or $2,970/year — save 2 months</div>
+        <ul class="features">
+          <li>Everything in Starter</li>
+          <li>Full catalog upload and analysis</li>
+          <li>Watchlists and tariff alerts</li>
+          <li>Scenario modeling</li>
+          <li>Sourcing alternative finder</li>
+          <li>API access</li>
+          <li>Unlimited calculations</li>
+          <li>Priority support</li>
+        </ul>
+        <a href="mailto:don@djaibc.com?subject=TariffNavigator Professional" class="button">Start Free Trial</a>
+      </div>
+      <div class="plan">
+        <h2>Enterprise</h2>
+        <div class="sub">For manufacturers and compliance teams</div>
+        <div class="price">$797<span>/month</span></div>
+        <div class="annual">Or $7,970/year — save 2 months</div>
+        <ul class="features">
+          <li>Everything in Professional</li>
+          <li>White-label option</li>
+          <li>Custom HS code database</li>
+          <li>Unlimited users</li>
+          <li>Dedicated account manager</li>
+          <li>24/7 phone support</li>
+          <li>SLA guarantee</li>
+        </ul>
+        <a href="mailto:don@djaibc.com?subject=TariffNavigator Enterprise" class="button outline">Contact Sales</a>
+      </div>
+    </div>
+    <div class="footer">Questions? Email <a href="mailto:don@djaibc.com">don@djaibc.com</a> or call us in Syracuse, NY.<br><br>All plans include a 14-day free trial. No credit card required.</div>
     </body></html>"""
-
 
 @app.get("/app", response_class=HTMLResponse)
 async def app_page():
