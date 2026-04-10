@@ -201,18 +201,31 @@ async def _seed_demo_user():
 
 @app.on_event("startup")
 async def startup_event():
-    """Initialize services on application startup."""
+    import subprocess
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    # Run migrations on startup
+    try:
+        result = subprocess.run(
+            ["python", "-m", "alembic", "upgrade", "head"],
+            capture_output=True, text=True
+        )
+        logger.info(f"Migrations: {result.stdout}")
+        if result.returncode != 0:
+            logger.error(f"Migration error: {result.stderr}")
+    except Exception as e:
+        logger.error(f"Migration failed: {e}")
+
     from app.services.scheduler import start_scheduler
     from app.services.hts_live import warm_cache
-    import logging
     import asyncio
 
-    logger = logging.getLogger(__name__)
     logger.info("Starting TariffNavigator application...")
-
-    # Start background scheduler
     start_scheduler()
-
+    asyncio.create_task(warm_cache())
+    asyncio.create_task(_seed_demo_user())
+    logger.info("Application startup complete")
     # Pre-warm HTS cache in background (don't block startup)
     asyncio.create_task(warm_cache())
 
