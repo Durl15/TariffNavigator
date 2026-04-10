@@ -216,6 +216,27 @@ async def startup_event():
             logger.error(f"Migration error: {result.stderr}")
     except Exception as e:
         logger.error(f"Migration failed: {e}")
+# Run migrations on startup
+    try:
+        result = subprocess.run(
+            ["python", "-m", "alembic", "upgrade", "head"],
+            capture_output=True, text=True
+        )
+        logger.info(f"Migrations: {result.stdout}")
+        if result.returncode != 0:
+            logger.error(f"Migration error: {result.stderr}")
+    except Exception as e:
+        logger.error(f"Migration failed: {e}")
+
+    # Create admin user
+    try:
+        result = subprocess.run(
+            ["python", "create_admin.py"],
+            capture_output=True, text=True
+        )
+        logger.info(f"Admin: {result.stdout}")
+    except Exception as e:
+        logger.error(f"Admin creation failed: {e}")
 
     from app.services.scheduler import start_scheduler
     from app.services.hts_live import warm_cache
