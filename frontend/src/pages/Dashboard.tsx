@@ -5,7 +5,7 @@ import toast from 'react-hot-toast'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import Navigation from '../components/Navigation'
-import OnboardingModal from '../components/OnboardingModal'
+import { OnboardingModal } from '../components/OnboardingModal'
 import { usePageTitle } from '../hooks/usePageTitle'
 import Footer from '../components/Footer'
 

@@ -545,6 +545,11 @@ function CalculatorPage() {
 
 // MAIN APP
 function App() {
+  const [showOnboarding, setShowOnboarding] = useState(() => {
+    // Show onboarding if user is logged in and hasn't completed it yet
+    return !!localStorage.getItem('token') && !localStorage.getItem('onboarding_done')
+  })
+
   return (
     <Router>
       <Routes>
@@ -608,7 +613,7 @@ function App() {
       <ChatBot />
 
       {/* Onboarding wizard - shown once to new users */}
-      <OnboardingModal />
+      <OnboardingModal show={showOnboarding} onComplete={() => setShowOnboarding(false)} />
     </Router>
   )
 }

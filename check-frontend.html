@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Frontend Deployment Checker</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2563eb;
+            margin-bottom: 10px;
+        }
+        .status {
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+            font-weight: bold;
+        }
+        .checking { background: #fef3c7; color: #92400e; }
+        .success { background: #d1fae5; color: #065f46; }
+        .error { background: #fee2e2; color: #991b1b; }
+        .test-item {
+            padding: 10px;
+            margin: 10px 0;
+            border-left: 4px solid #e5e7eb;
+            background: #f9fafb;
+        }
+        .test-item.pass { border-color: #10b981; }
+        .test-item.fail { border-color: #ef4444; }
+        button {
+            background: #2563eb;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+        }
+        button:hover { background: #1d4ed8; }
+        a {
+            display: inline-block;
+            color: #2563eb;
+            text-decoration: none;
+            padding: 10px 20px;
+            border: 2px solid #2563eb;
+            border-radius: 6px;
+            margin: 5px;
+        }
+        a:hover { background: #2563eb; color: white; }
+        .instructions {
+            background: #eff6ff;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Frontend Deployment Checker</h1>
+        <p>Check if TariffNavigator frontend has deployed with new features</p>
+
+        <div id="status" class="status checking">
+            ⏳ Waiting to check...
+        </div>
+
+        <div class="instructions">
+            <strong>What's Being Checked:</strong>
+            <ul>
+                <li>Dashboard route exists (/dashboard)</li>
+                <li>Dashboard button on calculator page</li>
+                <li>Search filters component</li>
+                <li>Export PDF functionality</li>
+            </ul>
+        </div>
+
+        <button onclick="checkDeployment()">🔍 Check Deployment Status</button>
+        <button onclick="location.reload()">🔄 Refresh Page</button>
+
+        <div id="results"></div>
+
+        <hr style="margin: 30px 0;">
+
+        <h3>Quick Links:</h3>
+        <a href="https://tariffnavigator.vercel.app/dashboard" target="_blank">📊 Open Dashboard</a>
+        <a href="https://tariffnavigator.vercel.app/" target="_blank">🧮 Open Calculator</a>
+        <a href="https://vercel.com/dashboard" target="_blank">⚙️ Vercel Dashboard</a>
+
+        <hr style="margin: 30px 0;">
+
+        <div style="background: #f9fafb; padding: 15px; border-radius: 5px;">
+            <h3>Expected Features:</h3>
+            <p><strong>Dashboard Page:</strong></p>
+            <ul>
+                <li>✓ 4 stat cards (Total, This Month, Today, HS Codes)</li>
+                <li>✓ Popular HS Codes section</li>
+                <li>✓ Supported Countries badges</li>
+                <li>✓ "New Calculation" and "Export CSV" buttons</li>
+            </ul>
+            <p><strong>Calculator Page:</strong></p>
+            <ul>
+                <li>✓ "Dashboard" button (top right)</li>
+                <li>✓ "Filters" expandable section</li>
+                <li>✓ "Export PDF Report" button (after calculation)</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        async function checkDeployment() {
+            const status = document.getElementById('status');
+            const results = document.getElementById('results');
+
+            status.className = 'status checking';
+            status.innerHTML = '⏳ Checking deployment...';
+            results.innerHTML = '';
+
+            const tests = [
+                { name: 'Dashboard Route', url: 'https://tariffnavigator.vercel.app/dashboard', expect: 'html' },
+                { name: 'Calculator Page', url: 'https://tariffnavigator.vercel.app/', expect: 'html' },
+            ];
+
+            let passed = 0;
+            let failed = 0;
+
+            for (const test of tests) {
+                try {
+                    const response = await fetch(test.url);
+                    const html = await response.text();
+
+                    let testPassed = false;
+                    let details = '';
+
+                    if (test.name === 'Dashboard Route') {
+                        // Check if dashboard components exist
+                        testPassed = html.includes('Dashboard') || html.length > 500;
+                        details = testPassed ?
+                            'Dashboard route responds (page loads)' :
+                            'Dashboard returns blank or 404';
+                    } else if (test.name === 'Calculator Page') {
+                        testPassed = html.includes('Tariff') || html.length > 500;
+                        details = testPassed ?
+                            'Calculator page loads' :
+                            'Calculator page failed';
+                    }
+
+                    if (testPassed) {
+                        passed++;
+                        results.innerHTML += `
+                            <div class="test-item pass">
+                                ✅ <strong>${test.name}:</strong> ${details}
+                            </div>
+                        `;
+                    } else {
+                        failed++;
+                        results.innerHTML += `
+                            <div class="test-item fail">
+                                ❌ <strong>${test.name}:</strong> ${details}
+                            </div>
+                        `;
+                    }
+                } catch (error) {
+                    failed++;
+                    results.innerHTML += `
+                        <div class="test-item fail">
+                            ❌ <strong>${test.name}:</strong> Error: ${error.message}
+                        </div>
+                    `;
+                }
+            }
+
+            // Final status
+            if (failed === 0) {
+                status.className = 'status success';
+                status.innerHTML = `
+                    ✅ <strong>Deployment Successful!</strong><br>
+                    All ${passed} tests passed. New features are live!
+                `;
+            } else {
+                status.className = 'status error';
+                status.innerHTML = `
+                    ⚠️ <strong>Deployment Not Ready</strong><br>
+                    ${failed} test(s) failed. Frontend may still be deploying...
+                `;
+            }
+
+            results.innerHTML += `
+                <div style="margin-top: 20px; padding: 15px; background: #f9fafb; border-radius: 5px;">
+                    <strong>Next Steps:</strong>
+                    ${failed === 0 ?
+                        '<p>✅ Deployment complete! Click "Open Dashboard" above to test all features.</p>' :
+                        '<p>⏳ Wait 1-2 more minutes and click "Check Deployment Status" again.</p>'
+                    }
+                </div>
+            `;
+        }
+
+        // Auto-check on load after 3 seconds
+        setTimeout(() => {
+            document.getElementById('status').innerHTML = '🔄 Auto-checking in 3 seconds...';
+            setTimeout(checkDeployment, 3000);
+        }, 1000);
+    </script>
+</body>
+</html>

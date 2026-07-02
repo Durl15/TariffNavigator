@@ -1,47 +1,47 @@
-"""Create demo user for the login page"""
-import sys
-import os
-sys.path.insert(0, os.path.dirname(__file__))
-
-from passlib.context import CryptContext
+"""
+Create the demo account on the production database.
+Run once: python create_demo_user.py
+"""
 import uuid
-import sqlite3
+from sqlalchemy import create_engine, text
+from passlib.context import CryptContext
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+pwd_context = CryptContext(schemes=['bcrypt'], deprecated='auto')
 
-def create_demo_user():
-    conn = sqlite3.connect('tariffnavigator.db')
-    cursor = conn.cursor()
+DATABASE_URL = 'postgresql://tariffnavigator:REDACTED_DB_PASSWORD@dpg-d6a8l7h4tr6s73d48dd0-a.oregon-postgres.render.com/tariffnavigator'
 
-    email = "demo@tariffnavigator.com"
-    password = "demo1234"
+EMAIL    = 'demo@tariffnavigator.com'
+PASSWORD = 'demo1234'
+NAME     = 'Demo User'
+ROLE     = 'pro'
 
-    cursor.execute("SELECT email FROM users WHERE email = ?", (email,))
-    if cursor.fetchone():
-        # Update password in case it changed
-        hashed = pwd_context.hash(password)
-        cursor.execute("UPDATE users SET hashed_password = ?, role = ?, is_active = 1, is_email_verified = 1 WHERE email = ?",
-                       (hashed, "pro", email))
-        conn.commit()
-        print(f"✓ Demo user updated: {email} / {password}")
-        conn.close()
-        return
+print('Connecting to production database...')
+engine = create_engine(DATABASE_URL)
 
-    user_id = str(uuid.uuid4())
-    hashed = pwd_context.hash(password)
+with engine.begin() as conn:
+    existing = conn.execute(
+        text("SELECT id FROM users WHERE email = :email"),
+        {'email': EMAIL}
+    ).fetchone()
 
-    cursor.execute("""
-        INSERT INTO users (id, email, hashed_password, full_name, role, is_active, is_email_verified)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-    """, (user_id, email, hashed, "Demo User", "pro", 1, 1))
+    if existing:
+        conn.execute(
+            text("UPDATE users SET hashed_password = :pw, role = :role, is_active = true, is_email_verified = true WHERE email = :email"),
+            {'pw': pwd_context.hash(PASSWORD), 'role': ROLE, 'email': EMAIL}
+        )
+        action = 'updated'
+    else:
+        conn.execute(
+            text("""
+                INSERT INTO users (id, email, hashed_password, full_name, role, is_active, is_email_verified)
+                VALUES (:id, :email, :pw, :name, :role, true, true)
+            """),
+            {'id': str(uuid.uuid4()), 'email': EMAIL, 'pw': pwd_context.hash(PASSWORD),
+             'name': NAME, 'role': ROLE}
+        )
+        action = 'created'
 
-    conn.commit()
-    conn.close()
-
-    print(f"✓ Demo user created!")
-    print(f"  Email:    {email}")
-    print(f"  Password: {password}")
-    print(f"  Role:     pro")
-
-if __name__ == "__main__":
-    create_demo_user()
+print('Demo account ' + action + ' successfully.')
+print('Email:    ' + EMAIL)
+print('Password: ' + PASSWORD)
+print('Role:     ' + ROLE)

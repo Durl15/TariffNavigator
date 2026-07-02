@@ -5,7 +5,11 @@ from typing import List, Union
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(extra='ignore')
+    model_config = SettingsConfigDict(
+        extra='ignore',
+        env_file='.env',
+        env_file_encoding='utf-8'
+    )
 
     PROJECT_NAME: str = "Tariff Navigator"
     VERSION: str = "0.1.0"
@@ -19,7 +23,7 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24
 
     # CORS - accepts comma-separated string or list
-    CORS_ORIGINS: Union[List[str], str] = "http://localhost:3000,http://localhost:5173,http://localhost:8080"
+    CORS_ORIGINS: Union[List[str], str] = "http://localhost:3000,http://localhost:5173,http://localhost:8080,https://tariffnavigator-frontend.onrender.com"
 
     @field_validator('CORS_ORIGINS', mode='before')
     @classmethod
@@ -37,7 +41,7 @@ class Settings(BaseSettings):
     SMTP_PASSWORD: str = ""  # Set via environment variable
     FROM_EMAIL: str = "noreply@tariffnavigator.com"
     FROM_NAME: str = "TariffNavigator"
-    FRONTEND_URL: str = "http://localhost:3000"
+    FRONTEND_URL: str = "https://tariffnavigator-frontend.onrender.com"
 
     # AI Settings (Phase 3)
     OPENAI_API_KEY: str = ""  # Set via environment variable
@@ -46,8 +50,9 @@ class Settings(BaseSettings):
     STRIPE_SECRET_KEY: str = ""  # sk_test_... or sk_live_...
     STRIPE_PUBLISHABLE_KEY: str = ""  # pk_test_... or pk_live_...
     STRIPE_WEBHOOK_SECRET: str = ""  # whsec_...
-    STRIPE_PRICE_ID_PRO: str = ""  # price_...
-    STRIPE_PRICE_ID_ENTERPRISE: str = ""  # price_...
+    STRIPE_PRICE_ID_PRO: str = ""          # price_...
+    STRIPE_PRICE_ID_ENTERPRISE: str = ""   # price_...
+    STRIPE_PRICE_ID_CONSULTANT: str = ""   # price_...
 
     def model_post_init(self, __context) -> None:
         """Validate settings after initialization"""

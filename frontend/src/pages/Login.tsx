@@ -12,11 +12,14 @@ const Login: React.FC = () => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [slowWarning, setSlowWarning] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setSlowWarning(false);
     setLoading(true);
+    const slowTimer = setTimeout(() => setSlowWarning(true), 6000);
 
     try {
       const apiUrl = import.meta.env.VITE_API_URL || 'https://tariffnavigator-backend.onrender.com/api/v1';
@@ -32,18 +35,24 @@ const Login: React.FC = () => {
       }
 
       const data = await response.json();
+      clearTimeout(slowTimer);
+      localStorage.removeItem('onboarding_done');
       localStorage.setItem('token', data.access_token);
       navigate('/dashboard');
     } catch (err: any) {
       setError(err.message || 'An error occurred during login');
     } finally {
+      clearTimeout(slowTimer);
       setLoading(false);
+      setSlowWarning(false);
     }
   };
 
   const handleDemoLogin = async () => {
     setError('');
+    setSlowWarning(false);
     setLoading(true);
+    const slowTimer = setTimeout(() => setSlowWarning(true), 6000);
     setEmail('demo@tariffnavigator.com');
     setPassword('demo1234');
     try {
@@ -58,12 +67,16 @@ const Login: React.FC = () => {
         throw new Error(data.detail || 'Demo login failed');
       }
       const data = await response.json();
+      clearTimeout(slowTimer);
+      localStorage.removeItem('onboarding_done');
       localStorage.setItem('token', data.access_token);
       navigate('/dashboard');
     } catch (err: any) {
       setError(err.message || 'Demo login failed — please try again');
     } finally {
+      clearTimeout(slowTimer);
       setLoading(false);
+      setSlowWarning(false);
     }
   };
 
@@ -184,6 +197,13 @@ const Login: React.FC = () => {
                   />
                 </div>
               </div>
+
+              {slowWarning && !error && (
+                <div className="flex items-start space-x-2 bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded-lg text-sm">
+                  <div className="h-4 w-4 border-2 border-blue-400/40 border-t-blue-500 rounded-full animate-spin mt-0.5 flex-shrink-0" />
+                  <span>Server is waking up — this takes up to 30 seconds on first use. Please wait…</span>
+                </div>
+              )}
 
               {error && (
                 <div className="flex items-start space-x-2 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">

@@ -5,6 +5,7 @@ Processes Stripe webhook events and updates database
 import stripe
 import logging
 from datetime import datetime
+from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 import uuid
@@ -47,28 +48,51 @@ class WebhookService:
         else:
             logger.info(f"No handler for event type: {event.type}")
 
+    # Map plan → role name used in User.role
+    PLAN_TO_ROLE = {
+        "pro": "pro",
+        "enterprise": "enterprise",
+        "consultant": "consultant",
+    }
+
+    async def _upgrade_user_role(self, user_id: str, plan: str) -> Optional[User]:
+        """Set user.role to the paid plan role."""
+        role = self.PLAN_TO_ROLE.get(plan)
+        if not role:
+            return None
+        result = await self.db.execute(select(User).where(User.id == user_id))
+        user = result.scalar_one_or_none()
+        if user:
+            user.role = role
+            logger.info("Upgraded user %s to role=%s", user_id, role)
+        return user
+
+    async def _upgrade_org_users(self, org_id: str, plan: str) -> None:
+        """Upgrade all users in an org to the paid plan role."""
+        role = self.PLAN_TO_ROLE.get(plan)
+        if not role:
+            return
+        result = await self.db.execute(select(User).where(User.organization_id == org_id))
+        for user in result.scalars().all():
+            user.role = role
+
     async def handle_subscription_created(self, stripe_subscription):
-        """
-        Handle new subscription creation.
+        """Handle new subscription — supports both individual users and orgs."""
+        org_id = stripe_subscription.metadata.get("organization_id")
+        user_id = stripe_subscription.metadata.get("user_id")
+        plan = stripe_subscription.metadata.get("plan")
 
-        Creates Subscription record and updates Organization.
-        """
-        org_id = stripe_subscription.metadata.get('organization_id')
-        plan = stripe_subscription.metadata.get('plan')
-
-        if not org_id or not plan:
-            logger.error(f"Missing metadata in subscription {stripe_subscription.id}")
+        if not plan or (not org_id and not user_id):
+            logger.error("Missing metadata in subscription %s", stripe_subscription.id)
             return
 
-        # Check if subscription already exists
+        # Idempotency check
         stmt = select(Subscription).where(
             Subscription.stripe_subscription_id == stripe_subscription.id
         )
         result = await self.db.execute(stmt)
-        existing = result.scalar_one_or_none()
-
-        if existing:
-            logger.warning(f"Subscription {stripe_subscription.id} already exists")
+        if result.scalar_one_or_none():
+            logger.warning("Subscription %s already exists", stripe_subscription.id)
             return
 
         # Create Subscription record
@@ -83,53 +107,50 @@ class WebhookService:
             current_period_start=datetime.fromtimestamp(stripe_subscription.current_period_start),
             current_period_end=datetime.fromtimestamp(stripe_subscription.current_period_end),
             cancel_at_period_end=stripe_subscription.cancel_at_period_end,
-            trial_end=datetime.fromtimestamp(stripe_subscription.trial_end) if stripe_subscription.trial_end else None
+            trial_end=datetime.fromtimestamp(stripe_subscription.trial_end) if stripe_subscription.trial_end else None,
         )
-
         self.db.add(subscription)
 
-        # Update organization
-        org = await self.db.get(Organization, org_id)
-        if org:
-            org.plan = plan
-            org.subscription_status = 'active'
+        calc_limits = {"pro": 1000, "enterprise": 10000, "consultant": None}
+        notify_user = None
 
-            # Update quotas based on plan
-            if plan == 'pro':
-                org.max_calculations_per_month = 1000
-            elif plan == 'enterprise':
-                org.max_calculations_per_month = 10000
+        if org_id:
+            # Org-based: update org + all org users
+            org = await self.db.get(Organization, org_id)
+            if org:
+                org.plan = plan
+                org.subscription_status = "active"
+                org.max_calculations_per_month = calc_limits.get(plan, 1000)
+            await self._upgrade_org_users(org_id, plan)
 
-        await self.db.commit()
-
-        logger.info(f"Created subscription {subscription.id} for org {org_id}, plan {plan}")
-
-        # Send welcome email to organization admin
-        try:
-            # Get organization admin user
+            # Find admin for welcome email
             stmt = select(User).where(
                 User.organization_id == org_id,
-                User.role.in_(['admin', 'superadmin'])
+                User.role.in_(["admin", "superadmin"]),
             ).limit(1)
             result = await self.db.execute(stmt)
-            admin_user = result.scalar_one_or_none()
+            notify_user = result.scalar_one_or_none()
+        else:
+            # Individual: update user.role directly
+            notify_user = await self._upgrade_user_role(user_id, plan)
 
-            if admin_user and admin_user.email:
-                calculations_limit = 1000 if plan == 'pro' else 10000
-                next_billing = subscription.current_period_end.strftime('%B %d, %Y')
+        await self.db.commit()
+        logger.info("Created subscription %s plan=%s org=%s user=%s", subscription.id, plan, org_id, user_id)
 
+        # Welcome email
+        try:
+            if notify_user and notify_user.email:
+                next_billing = subscription.current_period_end.strftime("%B %d, %Y")
                 await email_service.send_subscription_created_email(
-                    to_email=admin_user.email,
-                    user_name=admin_user.full_name or admin_user.email,
+                    to_email=notify_user.email,
+                    user_name=notify_user.full_name or notify_user.email,
                     plan=plan,
-                    organization_name=org.name,
+                    organization_name=(org.name if org_id and org else None),
                     next_billing_date=next_billing,
-                    calculations_limit=calculations_limit
+                    calculations_limit=calc_limits.get(plan, 0) or 999999,
                 )
-                logger.info(f"Sent subscription created email to {admin_user.email}")
         except Exception as e:
-            # Don't fail webhook if email fails
-            logger.error(f"Failed to send subscription created email: {str(e)}")
+            logger.error("Failed to send subscription created email: %s", e)
 
     async def handle_subscription_updated(self, stripe_subscription):
         """
@@ -185,12 +206,26 @@ class WebhookService:
         subscription.status = SubscriptionStatus.CANCELED
         subscription.canceled_at = datetime.utcnow()
 
-        # Downgrade organization to free plan
+        # Downgrade org or individual user to free
         org = subscription.organization
         if org:
-            org.plan = 'free'
-            org.subscription_status = 'canceled'
-            org.max_calculations_per_month = 100  # Free tier limit
+            org.plan = "free"
+            org.subscription_status = "canceled"
+            org.max_calculations_per_month = 10
+            # Downgrade all org users
+            result = await self.db.execute(select(User).where(User.organization_id == org.id))
+            for u in result.scalars().all():
+                u.role = "user"
+        else:
+            # Individual subscription — find user by Stripe customer ID in preferences
+            result = await self.db.execute(
+                select(User).where(
+                    User.preferences["stripe_customer_id"].as_string() == subscription.stripe_customer_id
+                )
+            )
+            user = result.scalar_one_or_none()
+            if user:
+                user.role = "user"
 
         await self.db.commit()
 

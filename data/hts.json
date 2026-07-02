@@ -1,0 +1,55 @@
+{
+  "_meta": {
+    "source": "USITC Harmonized Tariff Schedule",
+    "release": "2026HTSRev4",
+    "api_base": "https://hts.usitc.gov/reststop",
+    "endpoints": {
+      "search": "GET /search?keyword={term}",
+      "rates": "GET /getRates?htsno={htsno}&keyword={term}",
+      "current_release": "GET /currentRelease"
+    },
+    "note": "No bulk download available. App uses live API with 24-hour in-memory cache."
+  },
+  "_schema": {
+    "htsno": "string — full HTS code e.g. '8471.30.01.00'",
+    "description": "string — product description",
+    "general": "string — MFN duty rate e.g. 'Free', '3.3%', '15¢/kg + 6.5%'",
+    "special": "string — FTA preferential rates e.g. 'Free (A,AU,BH,CL,CO,KR,...)'",
+    "other": "string — Column 2 (non-MFN) rate",
+    "units": "array — unit of quantity",
+    "indent": "string — hierarchy indent level",
+    "general_rate": "float — parsed MFN rate as percentage (null if unparseable)"
+  },
+  "_sample": [
+    {
+      "htsno": "8471.30.01.00",
+      "description": "Portable automatic data processing machines, weighing not more than 10 kg, consisting of at least a central processing unit, a keyboard and a display",
+      "general": "Free",
+      "special": "Free (A,AU,BH,CL,CO,D,E,IL,JO,KR,MA,OM,P,PA,PE,S,SG)",
+      "other": "35%",
+      "units": ["No."],
+      "indent": "2",
+      "general_rate": 0.0
+    },
+    {
+      "htsno": "8517.13.00.00",
+      "description": "Smartphones",
+      "general": "Free",
+      "special": "Free (A,AU,BH,CL,CO,D,E,IL,JO,KR,MA,OM,P,PA,PE,S,SG)",
+      "other": "35%",
+      "units": ["No."],
+      "indent": "2",
+      "general_rate": 0.0
+    },
+    {
+      "htsno": "6110.20.20.10",
+      "description": "Sweaters, pullovers, sweatshirts, waistcoats and similar articles, of cotton, knitted",
+      "general": "16.5%",
+      "special": "Free (AU,BH,CL,CO,IL,JO,KR,MA,OM,P,PA,PE,S,SG)",
+      "other": "90%",
+      "units": ["doz.", "kg"],
+      "indent": "3",
+      "general_rate": 16.5
+    }
+  ]
+}

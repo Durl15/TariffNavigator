@@ -29,7 +29,9 @@ async def log_requests(request: Request, call_next):
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.CORS_ORIGINS,
-    allow_origin_regex=r"https://(.*\.vercel\.app|.*\.onrender\.com|.*\.netlify\.app)",
+    # Anchored, owned-preview subdomains only. Previous pattern was unanchored and
+    # matched ANY *.netlify.app/*.vercel.app/*.onrender.com while sending credentials.
+    allow_origin_regex=r"^https://([a-z0-9-]+\.)?(tariffnavigator|tariff-navigator)\.(netlify|vercel)\.app$",
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     allow_headers=["*"],

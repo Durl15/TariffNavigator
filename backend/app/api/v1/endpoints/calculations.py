@@ -13,6 +13,7 @@ import math
 from app.db.session import get_db
 from app.api.deps import get_current_user
 from app.api.deps_rate_limit import check_user_rate_limit, check_calculation_quota
+from app.core.config import settings
 from app.models.user import User
 from app.models.calculation import Calculation, SharedLink
 from app.schemas.calculation import (
@@ -614,8 +615,8 @@ async def create_share_link(
     db.add(shared_link)
     await db.commit()
 
-    # Generate URL (use app's base URL - will be replaced with actual domain)
-    share_url = f"https://tariffnavigator.vercel.app/shared/{token}"
+    # Generate URL from FRONTEND_URL env var (set in .env or Render/Vercel dashboard)
+    share_url = f"{settings.FRONTEND_URL}/shared/{token}"
 
     return ShareLinkResponse(
         share_token=token,

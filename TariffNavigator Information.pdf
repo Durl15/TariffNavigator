@@ -1,0 +1,53 @@
+http://localhost:3007/login
+
+http://localhost:3002/
+
+http://localhost:3000
+
+password TestPassword123
+test@example.com
+
+http://localhost:3000/catalogs
+
+postgresql+asyncpg://tariffnavigator:REDACTED_DB_PASSWORD@dpg-d6a8l7h4tr6s73d48dd0-a/tariffnavigator
+
+
+ Email: test@test.com
+  - Password: password123
+
+Haiku Key  REDACTED_API_KEY
+Anthropic  REDACTED_API_KEY
+
+to use VC just type code and the file you want to edit ctrl v to paste
+
+install Aider pip install aider-chat
+
+setx ANTHROPIC_API_KEY "REDACTED_API_KEY"
+
+file dir C:\Projects\TariffNavigator>
+
+to run     aider --model anthropic/claude-3-5-haiku-20241022
+
+to set to haiku   llm default claude-3.5-haiku
+
+
+
+  Live URLs:
+  - App: https://tariffnavigator-frontend.onrender.com
+  - API: https://tariffnavigator-backend.onrender.com/docs
+
+  Admin Login:
+  - admin@test.com / password123
+
+  Features Working:
+  - ✅ Calculator (public)
+  - ✅ AI Chatbot (public)
+  - ✅ Dashboard, Catalogs, Watchlists (login required)
+
+  Deployment:
+  - Auto-deploys on git push to master
+  - Backend + Frontend on Render
+  - PostgreSQL database with HS codes
+
+  ---
+  🎊 You're all set! Enjoy your live app!

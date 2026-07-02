@@ -3,6 +3,7 @@ Subscription Management Endpoints - Module 3 Phase 2/4
 Handles Stripe Checkout, subscription management, and billing
 """
 from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import Body
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from typing import Optional
@@ -16,6 +17,13 @@ from app.models.subscription import Subscription, Payment
 from app.services.subscription_service import SubscriptionService
 from app.core.config import settings
 
+# Map plan name → (price_id_setting, role_name, display_name)
+PLAN_CONFIG = {
+    "pro":         ("STRIPE_PRICE_ID_PRO",         "pro",         "Pro"),
+    "enterprise":  ("STRIPE_PRICE_ID_ENTERPRISE",  "enterprise",  "Enterprise"),
+    "consultant":  ("STRIPE_PRICE_ID_CONSULTANT",  "consultant",  "Consultant"),
+}
+
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
@@ -25,102 +33,93 @@ stripe.api_key = settings.STRIPE_SECRET_KEY
 
 @router.post("/checkout/create-session")
 async def create_checkout_session(
-    plan: str,
+    plan: str = Body(..., embed=True),
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_admin_user)
+    current_user: User = Depends(get_current_user),
 ):
     """
-    Create Stripe Checkout session for subscription upgrade.
-    Requires admin role (only org admins can manage subscriptions).
-
-    Args:
-        plan: 'pro' or 'enterprise'
-
-    Returns:
-        checkout_url: Stripe Checkout URL to redirect user to
+    Create a Stripe Checkout session for any authenticated user.
+    Works for both individual users (no org) and org members.
+    plan: 'pro' | 'enterprise' | 'consultant'
     """
-    # Validate plan
-    if plan not in ['pro', 'enterprise']:
+    if plan not in PLAN_CONFIG:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid plan. Must be 'pro' or 'enterprise'"
+            detail=f"Invalid plan '{plan}'. Must be one of: {', '.join(PLAN_CONFIG)}"
         )
 
-    # Check if user has organization
-    if not current_user.organization_id:
+    price_attr, _, display = PLAN_CONFIG[plan]
+    price_id = getattr(settings, price_attr, "")
+    if not price_id:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="User must be part of an organization to subscribe"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Price ID for {display} plan not configured on the server."
         )
 
-    # Get organization
-    org = await db.get(Organization, current_user.organization_id)
-    if not org:
+    if not settings.STRIPE_SECRET_KEY:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Organization not found"
-        )
-
-    # Check if already has active subscription
-    if org.subscription_status == 'active':
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Organization already has an active subscription. Use upgrade endpoint to change plans."
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Stripe is not configured. Contact support@tariffnavigator.com to upgrade."
         )
 
     try:
-        # Get or create Stripe customer
-        if not org.stripe_customer_id:
-            customer = stripe.Customer.create(
-                email=current_user.email,
-                name=org.name,
-                metadata={
-                    "organization_id": org.id,
-                    "organization_name": org.name
-                }
+        # ── Org-based subscription ──────────────────────────────────────────
+        if current_user.organization_id:
+            org = await db.get(Organization, current_user.organization_id)
+            if not org:
+                raise HTTPException(status_code=404, detail="Organization not found")
+
+            if not org.stripe_customer_id:
+                customer = stripe.Customer.create(
+                    email=current_user.email,
+                    name=org.name,
+                    metadata={"organization_id": org.id},
+                )
+                org.stripe_customer_id = customer.id
+                await db.commit()
+
+            session = stripe.checkout.Session.create(
+                customer=org.stripe_customer_id,
+                payment_method_types=["card"],
+                line_items=[{"price": price_id, "quantity": 1}],
+                mode="subscription",
+                success_url=f"{settings.FRONTEND_URL}/subscription/success?session_id={{CHECKOUT_SESSION_ID}}&plan={plan}",
+                cancel_url=f"{settings.FRONTEND_URL}/pricing",
+                metadata={"organization_id": org.id, "plan": plan},
             )
-            org.stripe_customer_id = customer.id
-            await db.commit()
-            logger.info(f"Created Stripe customer {customer.id} for org {org.id}")
 
-        # Select price ID based on plan
-        price_id = (
-            settings.STRIPE_PRICE_ID_PRO if plan == 'pro'
-            else settings.STRIPE_PRICE_ID_ENTERPRISE
-        )
+        # ── Individual user subscription ────────────────────────────────────
+        else:
+            # Use user's stripe_customer_id stored in preferences, or create one
+            prefs = current_user.preferences or {}
+            stripe_customer_id = prefs.get("stripe_customer_id")
 
-        if not price_id:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Price ID for {plan} plan not configured"
+            if not stripe_customer_id:
+                customer = stripe.Customer.create(
+                    email=current_user.email,
+                    name=current_user.full_name or current_user.email,
+                    metadata={"user_id": current_user.id},
+                )
+                stripe_customer_id = customer.id
+                prefs["stripe_customer_id"] = stripe_customer_id
+                current_user.preferences = prefs
+                await db.commit()
+
+            session = stripe.checkout.Session.create(
+                customer=stripe_customer_id,
+                payment_method_types=["card"],
+                line_items=[{"price": price_id, "quantity": 1}],
+                mode="subscription",
+                success_url=f"{settings.FRONTEND_URL}/subscription/success?session_id={{CHECKOUT_SESSION_ID}}&plan={plan}",
+                cancel_url=f"{settings.FRONTEND_URL}/pricing",
+                metadata={"user_id": current_user.id, "plan": plan},
             )
 
-        # Create Stripe Checkout session
-        session = stripe.checkout.Session.create(
-            customer=org.stripe_customer_id,
-            payment_method_types=['card'],
-            line_items=[{
-                'price': price_id,
-                'quantity': 1,
-            }],
-            mode='subscription',
-            success_url=f"{settings.FRONTEND_URL}/subscription/success?session_id={{CHECKOUT_SESSION_ID}}",
-            cancel_url=f"{settings.FRONTEND_URL}/pricing",
-            metadata={
-                "organization_id": org.id,
-                "plan": plan
-            }
-        )
-
-        logger.info(f"Created checkout session {session.id} for org {org.id}, plan {plan}")
-
-        return {
-            "checkout_url": session.url,
-            "session_id": session.id
-        }
+        logger.info("Created checkout session %s for user %s plan=%s", session.id, current_user.id, plan)
+        return {"checkout_url": session.url, "session_id": session.id}
 
     except stripe.error.StripeError as e:
-        logger.error(f"Stripe error creating checkout session: {str(e)}")
+        logger.error("Stripe error creating checkout session: %s", e)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Payment provider error: {str(e)}"

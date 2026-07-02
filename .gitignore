@@ -65,3 +65,4 @@ logs/
 *.tmp
 .cache/
 backend/.env.txt
+.aider*

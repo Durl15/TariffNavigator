@@ -1,0 +1,6 @@
+﻿ACTIVE PROJECT: TariffNavigator
+Path: C:\Projects\TariffNavigator
+Stack: FastAPI + Python + Claude API + Netlify
+Status: Pre-launch — session context persistence, IP protection, GTM finalization
+Priority: Production stability, clean API responses, Netlify deploy integrity
+Notes: Flag any route that exposes tariff logic unprotected.
